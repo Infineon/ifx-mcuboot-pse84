@@ -1,0 +1,21 @@
+outdir/
+.*.swp
+target.sh
+*.pyc
+tags
+rusty-tags.*
+
+# mynewt
+/repos/
+/project.state
+/bin/
+/targets/
+**/build/**/*
+
+#Eclipse project files
+.cproject
+.project
+
+# Compiled python modules.
+*.pyc
+
