@@ -40,11 +40,11 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "cyip_srss.h"
 #include "cy_device.h"
 #include "ifx_se_crc32.h"
 #include "flash_map_backend.h"
 #include "image.h"
+#include "bootutil/bootutil_log.h"
 
 #define BOOT_DLM_CTL_REQUEST_RUN_RAM_APP        (0x03u)
 #define BOOT_DLM_CTL_REQUEST_RESET              (0x01u)
@@ -55,11 +55,10 @@
 #define STAGE_RAM_APP_UNSET                     (0x00000000u)
 
 #define DLM_HEADER_SIZE                         (0x68u)
-#define RAM_APP_STAGING_AREA_ID                 (0xFFu)
 
 /* Start address of upgrade flags area in RRAM
  * This area is used for passing state of L2-boot through reset */
-#define UPGRADE_FLAGS_AREA_START_OFFSET         (0x00000008U)
+#define UPGRADE_FLAGS_AREA_START_OFFSET         (0x00000010U)
 #define UPGRADE_FLAGS_AREA_START_ADDR           (CY_RRAM_BASE + UPGRADE_FLAGS_AREA_START_OFFSET)
 
 /* This value defines size of checksum field
@@ -150,6 +149,8 @@ static inline bool check_upgrade_flag_value(uint32_t flag_offset, uint32_t compa
 {
     bool rc = false;
 
+    BOOT_LOG_DBG("check_upgrade_flag_value: offset=0x%x, expected_val=0x%x", flag_offset, compared_val);
+
     do
     {
         uint8_t data_arr[UPGRADE_FLAGS_AREA_SIZE] = { 0U };
@@ -160,6 +161,8 @@ static inline bool check_upgrade_flag_value(uint32_t flag_offset, uint32_t compa
         /* Check if flag offset is valid */
         if (flag_offset > (UPGRADE_FLAGS_CRC_OFFSET - UPGRADE_FLAG_SIZE))
         {
+            BOOT_LOG_ERR("Invalid flag offset: 0x%x > 0x%x", flag_offset,
+                         (UPGRADE_FLAGS_CRC_OFFSET - UPGRADE_FLAG_SIZE));
             break;
         }
 
@@ -167,6 +170,8 @@ static inline bool check_upgrade_flag_value(uint32_t flag_offset, uint32_t compa
         if (Cy_RRAM_TSReadByteArray(RRAMC0, UPGRADE_FLAGS_AREA_START_ADDR, data_arr,
                                      UPGRADE_FLAGS_AREA_SIZE) != CY_RRAM_SUCCESS)
         {
+            BOOT_LOG_ERR("Failed to read upgrade flags area from RRAM at 0x%x",
+                         UPGRADE_FLAGS_AREA_START_ADDR);
             break;
         }
 
@@ -174,22 +179,30 @@ static inline bool check_upgrade_flag_value(uint32_t flag_offset, uint32_t compa
         calc_crc32 = ifx_se_crc32d6a(UPGRADE_FLAGS_AREA_SIZE - UPGRADE_FLAG_CRC_SIZE,
                                        data_arr, UPGRADE_FLAGS_AREA_START_ADDR);
 
+        BOOT_LOG_DBG("CRC check: stored=0x%x, calculated=0x%x", *p_crc32.p_uint32, calc_crc32);
+
         /* Compare CRC */
         if (*p_crc32.p_uint32 != calc_crc32)
         {
+            BOOT_LOG_WRN("CRC mismatch: stored=0x%x, calculated=0x%x", *p_crc32.p_uint32, calc_crc32);
             break;
         }
+
+        BOOT_LOG_DBG("Flag value check: actual=0x%x, expected=0x%x", *p_flag.p_uint32, compared_val);
 
         /* Compare flag with input flag value */
         if (*p_flag.p_uint32 != compared_val)
         {
+            BOOT_LOG_DBG("Flag value mismatch");
             break;
         }
 
+        BOOT_LOG_DBG("Flag check successful");
         rc = true;
 
     } while (false);
 
+    BOOT_LOG_DBG("check_upgrade_flag_value result: %s", rc ? "true" : "false");
     return rc;
 }
 
@@ -226,6 +239,8 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
 {
     ifx_stg_app_status_type_t rc = IFX_STG_APP_STATUS_ERROR;
 
+    BOOT_LOG_DBG("write_upgrade_flag: offset=0x%x, value=0x%x", flag_offset, flag_val);
+
     do
     {
         uint8_t data_arr[UPGRADE_FLAGS_AREA_SIZE] = { 0U };
@@ -236,6 +251,8 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
         /* Check if flag offset is valid */
         if (flag_offset > (UPGRADE_FLAGS_CRC_OFFSET - UPGRADE_FLAG_SIZE))
         {
+            BOOT_LOG_ERR("Invalid flag offset for write: 0x%x > 0x%x", flag_offset,
+                         (UPGRADE_FLAGS_CRC_OFFSET - UPGRADE_FLAG_SIZE));
             break;
         }
 
@@ -243,15 +260,18 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
         if (Cy_RRAM_TSReadByteArray(RRAMC0, UPGRADE_FLAGS_AREA_START_ADDR, data_arr,
                                     UPGRADE_FLAGS_AREA_SIZE) != CY_RRAM_SUCCESS)
         {
+            BOOT_LOG_ERR("Failed to read upgrade flags area for write operation");
             break;
         }
 
         /* Modify the flag value in data buffer in SRAM */
         (void)memcpy(&data_arr[flag_offset], p_flag.p_uint8, UPGRADE_FLAG_SIZE);
+        BOOT_LOG_DBG("Flag value updated in buffer at offset 0x%x", flag_offset);
 
         /* Calculate checksum of upgrade flags*/
         crc32 = ifx_se_crc32d6a(UPGRADE_FLAGS_AREA_SIZE - UPGRADE_FLAG_CRC_SIZE, data_arr,
                                                                                          UPGRADE_FLAGS_AREA_START_ADDR);
+        BOOT_LOG_DBG("New CRC calculated: 0x%x", crc32);
 
         /* Modify the checksum in data buffer in SRAM */
         (void)memcpy(&data_arr[UPGRADE_FLAGS_CRC_OFFSET], p_crc32.p_uint8, UPGRADE_FLAG_CRC_SIZE);
@@ -260,13 +280,16 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
         if (Cy_RRAM_TSWriteByteArray(RRAMC0, UPGRADE_FLAGS_AREA_START_ADDR, data_arr, UPGRADE_FLAGS_AREA_SIZE)
                                                                                                      != CY_RRAM_SUCCESS)
         {
+            BOOT_LOG_ERR("Failed to write updated flags to RRAM");
             break;
         }
+        BOOT_LOG_DBG("Updated flags written to RRAM successfully");
 
         /* Read and verify written upgrade flag */
         if (Cy_RRAM_TSReadByteArray(RRAMC0, UPGRADE_FLAGS_AREA_START_ADDR, data_arr, UPGRADE_FLAGS_AREA_SIZE)
                                                                                                      != CY_RRAM_SUCCESS)
         {
+            BOOT_LOG_ERR("Failed to read back written flags for verification");
             break;
         }
 
@@ -278,6 +301,8 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
         p_crc32.p_uint8 = &data_arr[UPGRADE_FLAGS_CRC_OFFSET];
         if (*p_crc32.p_uint32 != crc32)
         {
+            BOOT_LOG_ERR("CRC verification failed after write: stored=0x%x, calculated=0x%x",
+                         *p_crc32.p_uint32, crc32);
             break;
         }
 
@@ -285,13 +310,17 @@ static inline ifx_stg_app_status_type_t write_upgrade_flag(uint32_t flag_offset,
         p_flag.p_uint8 = &data_arr[flag_offset];
         if (*p_flag.p_uint32 != flag_val)
         {
+            BOOT_LOG_ERR("Flag verification failed: written=0x%x, expected=0x%x",
+                         *p_flag.p_uint32, flag_val);
             break;
         }
 
+        BOOT_LOG_DBG("Flag write and verification successful");
         rc = IFX_STG_APP_STATUS_SUCCESS;
 
     } while (false);
 
+    BOOT_LOG_DBG("write_upgrade_flag result: 0x%x", rc);
     return rc;
 }
 
@@ -346,23 +375,31 @@ static inline cy_rslt_t stage_ram_app_check_staging_area(struct ram_app_desc * d
 {
     ifx_stg_app_rslt_type_t result = IFX_STG_APP_RSLT_GEN_ERROR;
 
+    BOOT_LOG_DBG("Checking staging area at address 0x%x", RAM_APP_STAGING_ADDR);
+
     struct image_header *hdr =
         (struct image_header *)(RAM_APP_STAGING_ADDR);
+
+    BOOT_LOG_DBG("Image header magic: 0x%x (expected: 0x%x)", hdr->ih_magic, IMAGE_MAGIC);
+    BOOT_LOG_DBG("Image header flags: 0x%x", hdr->ih_flags);
 
     if ((hdr->ih_magic != IMAGE_MAGIC) ||
         (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
         /* No image present or it is corrupted */
+        BOOT_LOG_WRN("No valid image found in staging area (magic mismatch or non-bootable)");
         desc->size = 0u;
         desc->load_addr = 0u;
     }
     else
     {
         desc->size = hdr->ih_img_size;
-        desc->load_addr = hdr->ih_load_addr;
+        desc->load_addr = RAM_APP_STAGING_RAM_ADDR;
 
+        BOOT_LOG_INF("Valid image found - size: 0x%x, load_addr: 0x%x", desc->size, desc->load_addr);
         result = IFX_STG_APP_RSLT_STAGED;
     }
 
+    BOOT_LOG_DBG("stage_ram_app_check_staging_area result: 0x%x", result);
     return result;
 }
 
@@ -425,27 +462,37 @@ static inline uint32_t stage_ram_app_handler(void)
     struct ram_app_desc desc;
     const struct flash_area *fap = NULL;
 
+    BOOT_LOG_INF("Starting RAM app handler");
+
     do {
         /* Check RAM application pending status */
         if (check_pending_oem_ram_app_flag() == true)
         {
             pending_status = IFX_STG_APP_STATUS_PENDED;
+            BOOT_LOG_INF("RAM app pending flag is SET - clearing it");
+
+            (void)clear_pending_oem_ram_app_flag();
         }
         else
         {
             pending_status = IFX_STG_APP_STATUS_NOT_PENDED;
+            BOOT_LOG_DBG("RAM app pending flag is NOT set");
         }
 
         /* Check status returned by RAM App */
         ram_app_status = SRSS->BOOT_DLM_STATUS;
+        BOOT_LOG_DBG("RAM app status from BootROM: 0x%x", ram_app_status);
         
         /* If pended RAM App flag is set in upgrade flags area and RAM App execution status is success */
         if ((ram_app_status == STAGE_RAM_APP_SUCCESS) && (pending_status == IFX_STG_APP_STATUS_PENDED))
         {
+            BOOT_LOG_INF("RAM app execution successful - cleaning up staging area");
             /* If successful status received - erase staging area in external memory */
+
             rc = flash_area_open(RAM_APP_STAGING_AREA_ID, &fap);
             if (rc != 0) 
             {
+                BOOT_LOG_ERR("Failed to open staging area for cleanup: %d", rc);
                 result = IFX_STG_APP_RSLT_MEM_ERROR;
             }
             else
@@ -453,12 +500,15 @@ static inline uint32_t stage_ram_app_handler(void)
                 rc = flash_area_erase(fap, 0u, fap->fa_size);
                 if (rc != 0) 
                 {
+                    BOOT_LOG_ERR("Failed to erase staging area: %d", rc);
                     result = IFX_STG_APP_RSLT_MEM_ERROR;
                 }
                 else
                 {
+                    BOOT_LOG_DBG("Staging area erased successfully");
                     pending_status = clear_pending_oem_ram_app_flag();
                     result = IFX_STG_APP_RSLT_UPGRADED;
+                    BOOT_LOG_INF("RAM app upgrade completed successfully");
                 }
             }
             break;
@@ -466,16 +516,20 @@ static inline uint32_t stage_ram_app_handler(void)
         /* If pended RAM App flag is set in upgrade flags area and RAM App execution status returned as failure */
         else if ((ram_app_status == STAGE_RAM_APP_FAILED) && (pending_status == IFX_STG_APP_STATUS_PENDED))
         {
+            BOOT_LOG_ERR("RAM app execution failed");
             result = IFX_STG_APP_RSLT_UPGRADE_FAILURE;
             break;
         }
         /* If pended RAM App flag is unset in upgrade flags area and RAM App execution status returned as failure */
         else if ((ram_app_status == STAGE_RAM_APP_UNSET) && (pending_status == IFX_STG_APP_STATUS_NOT_PENDED))
         {
+            BOOT_LOG_DBG("No pending RAM app - proceeding with normal flow");
             result = IFX_STG_APP_RSLT_CLEARED;
         }
         else
         {
+            BOOT_LOG_ERR("Unexpected RAM app status combination: status=0x%x, pending=0x%x",
+                         ram_app_status, pending_status);
             result = IFX_STG_APP_RSLT_GEN_ERROR;
             break;
         }
@@ -484,29 +538,38 @@ static inline uint32_t stage_ram_app_handler(void)
         if ((stage_ram_app_check_staging_area(&desc) == IFX_STG_APP_RSLT_STAGED) &&
             (result == IFX_STG_APP_RSLT_CLEARED))
         {
+            BOOT_LOG_INF("New RAM app found in staging area");
             
             /* TODO: add more checks here */
             if ((desc.load_addr != 0) && (desc.size != 0))
             {
+                BOOT_LOG_INF("Copying RAM app to SRAM: src=0x%x, dst=0x%x, size=0x%x",
+                             RAM_APP_STAGING_ADDR, desc.load_addr, desc.size + DLM_HEADER_SIZE);
+
                 /* Copy RAM app binary to SRAM staging area */
                 (void)memcpy((void *)desc.load_addr, (
                         const void *)RAM_APP_STAGING_ADDR, 
                         (size_t)(desc.size + DLM_HEADER_SIZE));
                 
+                BOOT_LOG_DBG("RAM app copied to SRAM successfully");
                 result = IFX_STG_APP_RSLT_RAM_STAGED;
             }
             else
             {
+                BOOT_LOG_ERR("Invalid RAM app descriptor: load_addr=0x%x, size=0x%x",
+                             desc.load_addr, desc.size);
                 result = IFX_STG_APP_RSLT_NO_IMAGE;
             }
         }
         else
         {
+            BOOT_LOG_DBG("No new RAM app to stage");
             result = IFX_STG_APP_RSLT_NO_IMAGE;
         }
 
         if (IFX_STG_APP_RSLT_RAM_STAGED == result)
         {
+            BOOT_LOG_INF("Notifying BootROM about staged RAM app at 0x%x", desc.load_addr);
             /* Set status flags to notify BootROM */
             (void)stage_ram_app_notify_app_staged(desc.load_addr);
 
@@ -515,13 +578,13 @@ static inline uint32_t stage_ram_app_handler(void)
 
             if (pending_status == IFX_STG_APP_STATUS_SUCCESS)
             {
-#if RAM_APP_RESET_TRIGGER == 1
+                BOOT_LOG_INF("Pending flag set - initiating soft reset for BootROM execution");
                 /* Initiate soft reset to trigger BootROM flow - execution ends here */
                 SRSS->RES_SOFT_CTL = _VAL2FLD(SRSS_RES_SOFT_CTL_TRIGGER_SOFT, RES_SOFT_CTL_REQUEST_SET);
-#endif
             }
             else
             {
+                BOOT_LOG_ERR("Failed to set pending flag: 0x%x", pending_status);
                 result = IFX_STG_APP_RSLT_RAM_SET_PENDING_ERROR;
                 break;
             }
@@ -533,6 +596,7 @@ static inline uint32_t stage_ram_app_handler(void)
 
     } while (false);
 
+    BOOT_LOG_INF("RAM app handler completed with result: 0x%x", result);
     return result;
 }
 

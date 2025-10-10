@@ -2,7 +2,7 @@
     "core": {
         "name": "ifx-mcuboot-pse84",
         "id": "00000000-ce84-4649-a58a-4aa34fb55a20",
-        "version": "1.0.0.299"
+        "version": "1.1.0.349"
     },
     "configurator_support": true,
     "opt": {

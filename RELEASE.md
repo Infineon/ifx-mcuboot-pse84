@@ -16,6 +16,12 @@ platform support for Infineon microcontrollers.
 
 
 ### What Changed?
+#### v1.1.0
+* SE RAMApp Staging for EPC4 (CM0 RAMApp) support
+* Code execution from CM33 SRAM and external memory (EPC2, EPC4)
+* Multi-key multi-image XIP encryption (EPC2, EPC4) support
+* Image encryption with SE RT Services API (EPC4)
+
 #### v1.0.0
 * Initial release
 

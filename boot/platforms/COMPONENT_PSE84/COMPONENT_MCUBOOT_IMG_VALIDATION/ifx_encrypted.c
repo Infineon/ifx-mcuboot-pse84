@@ -6,8 +6,9 @@
  * Copyright (c) 2021-2025 Cypress Semiconductor Corporation (an Infineon company)
  */
 
+#include "mcuboot_config.h"
 #if defined(MCUBOOT_USE_ENC_IFX_SE)
-#include "mcuboot_config/mcuboot_config.h"
+
 #include "bootutil/bootutil_log.h"
 
 #include <stddef.h>
@@ -41,10 +42,10 @@ _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-P256 component indexes");
 
 static int ifx_aes_ctr_set_key(ifx_aes_ctr_context *ctx, const uint8_t *key);
-static int ifx_aes_ctr_encrypt(ifx_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m, 
+static int ifx_aes_ctr_encrypt(ifx_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m,
     uint32_t mlen, size_t blk_off, uint8_t *c);
-        
-static int ifx_ecdh_p256_shared_secret(ifx_aes_ctr_context* ctx, const uint8_t *pub_key, 
+
+static int ifx_ecdh_p256_shared_secret(ifx_aes_ctr_context* ctx, const uint8_t *pub_key,
     size_t pub_key_len, uint8_t *shared, size_t shared_len, size_t *out_len);
 static int ifx_kdf_aes_cmac(const uint8_t *ikm, size_t ikm_len, const uint8_t *info, size_t info_len,
     const uint8_t *salt, size_t salt_len, uint8_t *okm, size_t *okm_len);
@@ -126,9 +127,9 @@ cleanup:
  * @param c        Pointer to the output buffer (ciphertext or plaintext).
  * @return         0 on success, -1 on failure.
  */
-static int ifx_aes_ctr_encrypt(ifx_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m, 
+static int ifx_aes_ctr_encrypt(ifx_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m,
                                uint32_t mlen, size_t blk_off, uint8_t *c) {
-    
+
     ifx_se_status_t status = IFX_SE_INVALID;
     size_t out_size = 0;
     size_t finish_size = 0;
@@ -197,11 +198,11 @@ cleanup:
  * @return             0 on success, -1 on failure.
  */
 static int ifx_ecdh_p256_shared_secret(ifx_aes_ctr_context* ctx,
-                                       const uint8_t *pub_key, size_t pub_key_len, 
+                                       const uint8_t *pub_key, size_t pub_key_len,
                                        uint8_t *shared, size_t shared_len, size_t *out_len) {
-    
+
     ifx_se_status_t status = IFX_SE_INVALID;
-    ifx_se_key_id_fih_t ecdh_key_id = IFX_SE_KEY_ID_FIH_INIT_VALUE(0, 
+    ifx_se_key_id_fih_t ecdh_key_id = IFX_SE_KEY_ID_FIH_INIT_VALUE(0,
         IFX_SE_KEY_ID_VENDOR_MIN + ctx->ecdh_key_id);
     ifx_se_key_attributes_t private_key_attributes = IFX_SE_KEY_ATTRIBUTES_INIT;
 
@@ -214,11 +215,11 @@ static int ifx_ecdh_p256_shared_secret(ifx_aes_ctr_context* ctx,
         IFX_SE_KEY_PERSISTENCE_VOLATILE, IFX_SE_KEY_LOCATION_SE));
 
     /* Step 2: Perform the raw key agreement (ECDH) */
-    status = ifx_se_raw_key_agreement(ifx_se_fih_uint_encode(IFX_SE_ALG_ECDH), 
+    status = ifx_se_raw_key_agreement(ifx_se_fih_uint_encode(IFX_SE_ALG_ECDH),
                                       ecdh_key_id,
-                                      ifx_se_fih_ptr_encode(pub_key), 
+                                      ifx_se_fih_ptr_encode(pub_key),
                                       ifx_se_fih_uint_encode(pub_key_len),
-                                      ifx_se_fih_ptr_encode(shared), 
+                                      ifx_se_fih_ptr_encode(shared),
                                       ifx_se_fih_uint_encode(shared_len),
                                       ifx_se_fih_ptr_encode(out_len),
                                       IFX_SE_NULL_CTX);
@@ -251,7 +252,7 @@ cleanup:
  */
 static int ifx_kdf_aes_cmac(const uint8_t *ikm, size_t ikm_len, const uint8_t *info, size_t info_len,
                             const uint8_t *salt, size_t salt_len, uint8_t *okm, size_t *okm_len) {
-    
+
     ifx_se_status_t status = IFX_SE_INVALID;
     ifx_se_key_derivation_operation_t derivation_op = ifx_se_key_derivation_operation_init();
 
@@ -399,7 +400,7 @@ cleanup:
  */
 static int ifx_decrypt_img_enc_key(const uint8_t *derived_data, const uint8_t *eas_key_iv,
                                    const uint8_t *tlv_data, uint8_t *enckey) {
-    
+
     ifx_se_status_t status = IFX_SE_INVALID;
     ifx_se_key_id_fih_t aes_key_id = IFX_SE_KEY_ID_FIH_INIT;
     ifx_se_key_attributes_t aes_attributes = IFX_SE_KEY_ATTRIBUTES_INIT;
@@ -595,7 +596,7 @@ int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot, struct boot_s
  */
 int boot_encrypt(struct enc_key_data *enc_state, int image_index, const struct flash_area *fap,
                  uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf) {
-    
+
     struct enc_key_data *enc;
     uint8_t *nonce;
     uint8_t slot;
@@ -654,12 +655,12 @@ int boot_encrypt(struct enc_key_data *enc_state, int image_index, const struct f
  * @param hdr         Pointer to the image header.
  * @param fap         Pointer to the flash area structure.
  * @param bs          Pointer to the boot status structure.
- * @return            1 if the encryption key is already loaded, 
+ * @return            1 if the encryption key is already loaded,
  *                    0 on success, or -1 on failure.
  */
 int boot_enc_load(struct enc_key_data *enc_state, int image_index, const struct image_header *hdr,
                   const struct flash_area *fap, struct boot_status *bs) {
-    
+
     uint32_t off;
     uint16_t len;
     struct image_tlv_iter it;
@@ -706,7 +707,7 @@ int boot_enc_load(struct enc_key_data *enc_state, int image_index, const struct 
     }
 
     key_id = atoi((const char *)key_buf);
-    if (key_id < 0 || 
+    if (key_id < 0 ||
         (key_id > 0 && (uint32_t)key_id > IFX_SE_KEY_ID_VENDOR_MAX - IFX_SE_KEY_ID_VENDOR_MIN)) {
         return -1;
     }
@@ -758,7 +759,7 @@ int boot_enc_load(struct enc_key_data *enc_state, int image_index, const struct 
  */
 int boot_enc_decrypt(ifx_aes_ctr_context* ctx, const uint8_t *buf, uint8_t *enckey,
                      uint32_t sz, uint8_t *enciv) {
-    
+
     uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t info[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE] = "MCUBoot_ECIES_v1";
     uint8_t shared[SHARED_KEY_LEN];

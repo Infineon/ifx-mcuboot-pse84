@@ -8,6 +8,7 @@
 #include "mcuboot_config.h"
 
 #if defined(MCUBOOT_ENC_IMAGES)
+#if !defined(MCUBOOT_USE_ENC_IFX_SE)
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
@@ -183,8 +184,9 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
     mbedtls_asn1_buf alg;
     mbedtls_asn1_buf param;
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
-                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+    rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
+    if (rc != 0) {
         return -1;
     }
 
@@ -909,6 +911,7 @@ boot_enc_zeroize(struct enc_key_data *enc_state)
     (void)memset(enc_state, 0, sizeof(struct enc_key_data) * BOOT_NUM_SLOTS);
 }
 
+#endif /* !defined(MCUBOOT_USE_ENC_IFX_SE) */
 #endif /* MCUBOOT_ENC_IMAGES */
 
 /*

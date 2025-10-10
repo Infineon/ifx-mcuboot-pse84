@@ -137,7 +137,7 @@ signature_der_to_psa(const uint8_t *sign_in, size_t in_size,
                         */
                         if (r_len > IFX_SE_SIG_RS_SIZE) {
                             r_offset += r_len - IFX_SE_SIG_RS_SIZE;
-                            r_len = IFX_SE_SIG_RS_SIZE;	
+                            r_len = IFX_SE_SIG_RS_SIZE;
                         }
 
                         if (s_len > IFX_SE_SIG_RS_SIZE) {

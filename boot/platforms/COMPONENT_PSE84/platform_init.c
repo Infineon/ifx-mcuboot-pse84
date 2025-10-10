@@ -34,6 +34,7 @@
 * so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
 
+#include "mcuboot_config.h"
 #include "platform_init.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"

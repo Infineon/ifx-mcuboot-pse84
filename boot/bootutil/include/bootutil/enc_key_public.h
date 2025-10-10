@@ -36,10 +36,12 @@ extern "C" {
 #define ALIGN_UP(num, align)    (((num) + ((align) - 1U)) & ~((align) - 1U))
 #endif
 
+#if !defined(BOOT_ENC_KEY_SIZE)
 #ifdef MCUBOOT_AES_256
 #define BOOT_ENC_KEY_SIZE       32U
 #else
 #define BOOT_ENC_KEY_SIZE       16U
+#endif
 #endif
 
 #define BOOT_ENC_KEY_ALIGN_SIZE ALIGN_UP(BOOT_ENC_KEY_SIZE, BOOT_MAX_ALIGN)

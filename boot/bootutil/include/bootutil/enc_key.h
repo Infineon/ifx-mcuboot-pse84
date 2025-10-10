@@ -42,7 +42,7 @@ extern "C" {
 #define BOOT_ENC_TLV_ALIGN_SIZE ALIGN_UP(BOOT_ENC_TLV_SIZE, BOOT_MAX_ALIGN)
 
 #if defined(MCUBOOT_USE_ENC_IFX_SE)
-#define IFX_ENC_BLOCK_SIZE                              (16 * 1024) 
+#define IFX_ENC_BLOCK_SIZE                              (16 * 1024)
 #endif /* MCUBOOT_USE_ENC_IFX_SE */
 
 struct enc_key_data {

@@ -22,7 +22,7 @@
     <Const id="ERASE_VAL_INTERNAL_MEMORIES" value="0x0U" />
     <Const id="ERASE_VAL_EXTERNAL_FLASH" value="0xffU" />
 
-    
+
     <!-- For memory selection based on result from memoryIds() -->
     <Const id="MAX_MEMORIES" value="32" />
 
@@ -66,9 +66,9 @@
         id="bootloaderDoc"
         name="Edge Protect Bootloader documentation"
         group="Documentation"
-        default="This personality provides configuration options for MCUBoot bootloader including upgrade mode, logging level, fault injection hardening, and security features."
-        desc="Documentation for the EdgeProtect Bootloader Configuration personality"
-        linkText="EdgeProtect Bootloader Configuration Overview"
+        default="file:///`${cy_libs_path()}`/docs/PERSONALITY.html"
+        desc="Edge Protect Bootloader Solution Personality documentation"
+        linkText="Edge Protect Bootloader Solution Personality Overview"
         visible="true" />
 
     <!-- Upgrade mode selection -->
@@ -123,14 +123,14 @@
         default="3"
         editable="true"
         visible="true"
-        desc="Specifies the number of application images to manage">
+        desc="Specifies the number of project images to manage">
       <Entry name="1" value="1" visible="true" />
       <Entry name="2" value="2" visible="true" />
       <Entry name="3" value="3" visible="true" />
       <Entry name="4" value="4" visible="true" />
       <Entry name="5" value="5" visible="true" />
     </ParamChoice>
-    
+
     <!-- Validate boot slot -->
     <ParamBool
         id="validate_boot_slot"
@@ -150,7 +150,7 @@
         editable="true"
         visible="true"
         desc="Enables validation of the upgrade slot" />
-    
+
     <!-- Built in keys -->
     <ParamBool
         id="built_in_keys"
@@ -160,7 +160,7 @@
         editable="true"
         visible="false"
         desc="Enables the use of built-in cryptographic keys" />
-    
+
     <!-- Measured boot -->
     <ParamBool
         id="measured_boot"
@@ -191,7 +191,7 @@
         canBeEmpty="false"
         multiSelect="false"
         displayMemberKey="regionId"
-        desc="Select memory region for application for Shared data" />
+        desc="Select memory region for project for Shared data" />
 
     <ParamString
         id="mcuboot_shared_data_offset"
@@ -210,7 +210,7 @@
         editable="false"
         visible="false"
         desc="Hex size for MCUBoot shared data" />
-        
+
     <!-- HW rollback protection -->
     <ParamBool
         id="hw_rollback_protection"
@@ -221,7 +221,7 @@
         visible="true"
         desc="Enables hardware-based rollback protection" />
 
-    
+
     <!-- Dependency check -->
     <ParamBool
         id="dependency_check"
@@ -231,7 +231,7 @@
         editable="true"
         visible="true"
         desc="Enables dependency checking between images" />
-        
+
     <!-- SW downgrade prevention -->
     <ParamBool
         id="sw_downgrade_prevention"
@@ -250,11 +250,75 @@
         visible="false"
         desc="Internal variable. Software downgrade prevention enabled." />
 
-    <!-- Bootloader Application Configuration -->
+    <!-- Image encryption -->
+    <ParamChoice
+        id="image_encryption"
+        name="Image encryption"
+        group="MCUBoot config/Encryption"
+        default="off"
+        editable="true"
+        visible='`${validate_boot_slot eq true &amp;&amp; validate_upgrade_slot eq true}`'
+        desc="Selects the image encryption mode">
+      <Entry name="Off" value="off" visible="true" />
+      <Entry name="XIP encryption single AES key (+ ECIES P256)" value="xip_single_key" visible="`${upgrade_mode eq &quot;overwrite&quot;}`" />
+      <Entry name="XIP encryption multi AES keys (+ ECIES P256)" value="xip_multi_keys" visible="true" />
+      <Entry name="SE RT encryption" value="se_rt_encryption" visible="true" />
+    </ParamChoice>
+
+    <ParamBool
+        id="image_encryption_enabled"
+        name="Image encryption enabled"
+        group="Project $idx Configuration/Primary Slot Configuration"
+        default='`${validate_boot_slot eq true &amp;&amp; validate_upgrade_slot eq true &amp;&amp; image_encryption ne "off"}`'
+        editable="false"
+        visible="false"
+        desc="Image encryption enabled" />
+
+    <!-- Public Key encryption key address (visible when XIP encryption is selected) -->
+    <ParamString
+        id="key_encryption_key_path"
+        name="Public Key Encryption Key(KEK) path"
+        group="MCUBoot config/Encryption"
+        default="../../../../keys/enc-ec256-pub.pem"
+        editable="true"
+        visible='`${image_encryption_enabled}`'
+        desc="Path to the public EC256 key encryption key (KEK) file. Path is relative to the SignerCombiner JSON file location." />
+
+    <!-- Private Key Encryption Key ID for SE Runtime Encryption -->
+    <ParamString
+        id="key_encryption_key_id"
+        name="Private Key Encryption Key(KEK) id"
+        group="MCUBoot config/Encryption"
+        default="25"
+        editable="true"
+        visible='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption"}`'
+        desc="Decimal ID of the private EC256 key encryption key (KEK) for SE runtime encryption" />
+
+   <!-- AES128 cipher key -->
+    <ParamString
+        id="data_encryption_key_path"
+        name="AES128 Data Encryption Key(DEK) path"
+        group="MCUBoot config/Encryption"
+        default="../../../../keys/aes128_key.bin"
+        editable="true"
+        visible='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key"}`'
+        desc="Path to the AES128 Data Encryption Key(DEK) file. Path is relative to the SignerCombiner JSON file location." />
+
+   <!-- Nonce output file -->
+    <ParamString
+        id="nonce_output_file_path"
+        name="NONCE output file path"
+        group="MCUBoot config/Encryption"
+        default="../../../../keys/nonce.bin"
+        editable="true"
+        visible='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key"}`'
+        desc="During the signing of the first image the random NONCE is generated. This NONCE value must be saved and then be used for encrypting of other images. Path is relative to the SignerCombiner JSON file location." />
+
+    <!-- Bootloader Configuration -->
     <ParamChoice
         id="bootloader_device"
         name="Boot device"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="INTERNAL_RRAM"
         editable="true"
         visible="false"
@@ -268,7 +332,7 @@
     <ParamString
         id="bootloader_project_name"
         name="Bootloader project name"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="proj_bootloader"
         editable="true"
         visible="true"
@@ -276,26 +340,36 @@
     <ParamString
         id="bootloader_input_hex_path"
         name="Input hex file path"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="../../../../build/project_hex/proj_bootloader.hex"
         editable="true"
         visible="true"
         desc="Path to the input hex file for bootloader. Path is relative to the SignerCombiner JSON file location." />
-        
+
     <ParamString
         id="bootloader_output_hex_path"
         name="Output hex file path"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="../../../../build/project_hex/proj_bootloader_signed.hex"
         editable="true"
         visible="true"
         desc="Path to the output signed hex file for bootloader. Path is relative to the SignerCombiner JSON file location." />
 
+    <!-- Centralized OEM Private Key Path -->
+    <ParamString
+        id="oem_private_key_path"
+        name="OEM private key path"
+        group="Bootloader Configuration"
+        default="../../../../keys/oem_private_key_0.pem"
+        editable="true"
+        visible="true"
+        desc="Path to the OEM private key used for signing bootloader and projects. Path is relative to the SignerCombiner JSON file location." />
+
     <!-- Bootloader Base Address and Resultant Address -->
     <ParamString
         id="bootloader_device_type"
         name="Bootloader device type"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${bootloader_device eq "RRAM" ? "INTERNAL_RRAM" : (bootloader_device eq "SMIF0MEM0" || bootloader_device eq "SMIF0MEM1" || bootloader_device eq "SMIF0MEM2" || bootloader_device eq "SMIF0MEM3" || bootloader_device eq "SMIF1MEM0" || bootloader_device eq "SMIF1MEM1" || bootloader_device eq "SMIF1MEM2" || bootloader_device eq "SMIF1MEM3" ? "EXTERNAL_S_FLASH" : bootloader_device)}`'
         editable="false"
         visible="false"
@@ -305,178 +379,178 @@
      <ParamString
         id="bootloader_image_version"
         name="Bootloader image version"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="1.0.0"
         editable="true"
         visible='`${measured_boot}`'
         desc="Bootloader image version in the following format: 'major'.'minor'.'patch'. For example: 1.0.0, 5.3.8, etc" />
-     
+
      <ParamString
         id="bootloader_image_boot_record"
         name="Bootloader image boot record"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="proj_bldr"
         editable="true"
         visible='`${measured_boot}`'
         desc="Bootloader image boot record (12 characters max)" />
-        
-    <!-- Application Configurations using Repeat -->
+
+    <!-- Project Configurations using Repeat -->
 
     <Repeat count="$MAX_APPLICATIONS">
-      <!-- Application $idx Secondary Slot Region Selection -->
+      <!-- project $idx Secondary Slot Region Selection -->
       <ParamPersonality
         id="app$idx_secondary_region"
         name="Secondary slot region"
-        group="Application $idx Configuration/Memory Slots"
+        group="Project $idx Configuration/Memory Slots"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
         editable="true"
         blockType="vres\.memory_region_data"
         canBeEmpty="true"
         multiSelect="false"
         displayMemberKey="regionId"
-        desc="Select existing memory region for application $idx secondary slot" />
+        desc="Select existing memory region for project $idx secondary slot" />
 
 
       <ParamBool
         id="app$idx_ram_load"
         name="Ram load"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default="false"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Enable to load application $idx into RAM" />
+        desc="Enable to load project $idx into RAM" />
 
-      <!-- Application $idx RAM Load Memory Region Selection -->
+      <!-- project $idx RAM Load Memory Region Selection -->
       <ParamPersonality
         id="app$idx_ram_load_region"
         name="RAM load region"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         visible="`${($idx == 0 ? true : $idx &lt; image_count) &amp;&amp; app$idx_ram_load eq true}`"
         editable="true"
         blockType="vres\.memory_region_data"
         canBeEmpty="false"
         multiSelect="false"
         displayMemberKey="regionId"
-        desc="Select memory region for application $idx RAM load" />
+        desc="Select memory region for project $idx RAM load" />
 
       <ParamString
         id="app$idx_ram_load_offset"
         name="RAM load region offset"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${getExposedMember(getBlockFromInstance(app$idx_ram_load_region), &quot;offset&quot;)}`'
         editable="false"
         visible="false"
-        desc="RAM load region offset to load application $idx (from selected region)" />
+        desc="RAM load region offset to load project $idx (from selected region)" />
 
-      <!-- Application $idx RAM Load Region Details (hidden, for reference) -->
+      <!-- project $idx RAM Load Region Details (hidden, for reference) -->
       <ParamString
         id="app$idx_ram_load_region_size"
         name="RAM load region size"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${getExposedMember(getBlockFromInstance(app$idx_ram_load_region), &quot;size&quot;)}`'
         editable="false"
         visible="false"
-        desc="Size of selected RAM load region for application $idx" />
+        desc="Size of selected RAM load region for project $idx" />
 
       <ParamString
         id="app$idx_ram_load_memory_type"
         name="RAM load memory type"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${getExposedMember(getBlockFromInstance(app$idx_ram_load_region), &quot;memoryId&quot;)}`'
         editable="false"
         visible="false"
-        desc="Memory type of selected RAM load region for application $idx" />
+        desc="Memory type of selected RAM load region for project $idx" />
 
 	    <ParamString
         id="app$idx_ramload_device_type"
         name="RAM load device type"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${app$idx_ram_load_memory_type eq "CM55_ITCM_INTERNAL" ? "INTERNAL_S_ITCM" : app$idx_ram_load_memory_type eq "SOCMEM_RAM" ? "INTERNAL_S_SOCMEM" : "INTERNAL_S_SRAM"  }`'
         editable="false"
         visible="false"
-        desc="Resolved RAM Load device type for application $idx based on reserved memory region" />
+        desc="Resolved RAM Load device type for project $idx based on reserved memory region" />
 
-	    <!-- Application $idx RAM Load Region Base Address -->
+	    <!-- project $idx RAM Load Region Base Address -->
       <ParamString
         id="app$idx_ramload_base_address"
         name="RAM load base address"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${app$idx_ramload_device_type eq "INTERNAL_S_ITCM" ? toHex($BASE_ADDR_INTERNAL_S_ITCM) : app$idx_ramload_device_type eq "INTERNAL_S_SOCMEM" ? toHex($BASE_ADDR_INTERNAL_S_SOCMEM) : toHex($BASE_ADDR_INTERNAL_S_SRAM)}`'
         editable="false"
         visible="false"
-        desc="Base address of RAM Load region for application $idx" />
+        desc="Base address of RAM Load region for project $idx" />
 
-      <!-- Application $idx RAM Load Region Address -->
+      <!-- project $idx RAM Load Region Address -->
       <ParamString
         id="app$idx_ramload_address"
         name="RAM load region address"
-        group="Application $idx Configuration/RAM Load"
+        group="Project $idx Configuration/RAM Load"
         default='`${toHex((app$idx_ramload_device_type eq "INTERNAL_S_ITCM" ? $BASE_ADDR_INTERNAL_S_ITCM : app$idx_ramload_device_type eq "INTERNAL_S_SOCMEM" ? $BASE_ADDR_INTERNAL_S_SOCMEM : $BASE_ADDR_INTERNAL_S_SRAM) + app$idx_ram_load_offset)}`'
         editable="false"
         visible="`${($idx == 0 ? true : $idx &lt; image_count) &amp;&amp; app$idx_ram_load eq true}`"
-        desc="Address of the RAM Load region for application $idx." />
+        desc="Address of the RAM Load region for project $idx." />
 
-      <!-- Application $idx Security Configuration -->
+      <!-- project $idx Security Configuration -->
       <ParamChoice
         id="app$idx_key_source"
         name="Key source"
-        group="Application $idx Configuration/Security &amp; Cryptography"
+        group="Project $idx Configuration/Security &amp; Cryptography"
         default="provisioned_keys"
         editable="true"
         visible="false"
-        desc="Select the source of cryptographic keys for application $idx">
+        desc="Select the source of cryptographic keys for project $idx">
         <Entry name="Provisioned keys" value="provisioned_keys" visible="true" />
       </ParamChoice>
 
-      <!-- Application $idx Provisioned Keys Configuration -->
+      <!-- project $idx Provisioned Keys Configuration -->
       <ParamChoice
         id="app$idx_sig_verify_algo_provisioned"
         name="Signature verification algorithm"
-        group="Application $idx Configuration/Security &amp; Cryptography"
+        group="Project $idx Configuration/Security &amp; Cryptography"
         default="ecdsa_p256"
         editable="true"
         visible="false"
-        desc="Algorithm used for signature verification of application $idx">
+        desc="Algorithm used for signature verification of project $idx">
         <Entry name="ECDSA with P-256" value="ecdsa_p256" visible="true" />
       </ParamChoice>
 
       <ParamRange
         id="app$idx_sig_verify_key_id"
         name="Signature verification key ID"
-        group="Application $idx Configuration/Security &amp; Cryptography"
+        group="Project $idx Configuration/Security &amp; Cryptography"
         default="0"
         min="0"
         max="65535"
         resolution="1"
         editable="true"
         visible="false"
-        desc="ID of the provisioned signature verification key for application $idx" />
+        desc="ID of the provisioned signature verification key for project $idx" />
 
       <ParamChoice
         id="app$idx_key_encrypt_algo_provisioned"
         name="Key encryption algorithm"
-        group="Application $idx Configuration/Security &amp; Cryptography"
+        group="Project $idx Configuration/Security &amp; Cryptography"
         default="ecies_p256"
         editable="true"
         visible="false"
-        desc="Algorithm used for key encryption for application $idx">
+        desc="Algorithm used for key encryption for project $idx">
         <Entry name="ECIES-P256" value="ecies_p256" visible="true" />
       </ParamChoice>
 
       <ParamString
         id="app$idx_kek_public_key_path"
         name="KeK public key path"
-        group="Application $idx Configuration/Security &amp; Cryptography"
+        group="Project $idx Configuration/Security &amp; Cryptography"
         default=""
         editable="true"
         visible="false"
-        desc="Path to the Key Encryption Key (KeK) public key file for application $idx. Path is relative to the SignerCombiner JSON file location." />
+        desc="Path to the Key Encryption Key (KeK) public key file for project $idx. Path is relative to the SignerCombiner JSON file location." />
 
-      <!-- Application $idx Hex File Paths for SignerCombiner -->
+      <!-- project $idx Hex File Paths for SignerCombiner -->
       <ParamString
         id="app$idx_project_name"
         name="Project name"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="`${$idx == 0 ? &quot;proj_cm33_s&quot; : ($idx == 1 ? &quot;proj_cm33_ns&quot; : ($idx == 2 ? &quot;proj_cm55&quot; : &quot;proj_app_$idx&quot;))}`"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
@@ -484,89 +558,97 @@
       <ParamString
         id="app$idx_input_hex_path"
         name="Input hex file path"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="`${$idx == 0 ? &quot;../../../../build/project_hex/proj_cm33_s.hex&quot; : ($idx == 1 ? &quot;../../../../build/project_hex/proj_cm33_ns.hex&quot; : ($idx == 2 ? &quot;../../../../build/project_hex/proj_cm55.hex&quot; : &quot;../../../../build/project_hex/app_$idx.hex&quot;))}`"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Path to the input hex file for application $idx. Path is relative to the SignerCombiner JSON file location." />
+        desc="Path to the input hex file for project $idx. Path is relative to the SignerCombiner JSON file location." />
       <ParamString
         id="app$idx_output_hex_path"
         name="Output hex file path"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="`${$idx == 0 ? &quot;../../../../build/project_hex/proj_cm33_s_signed.hex&quot; : ($idx == 1 ? &quot;../../../../build/project_hex/proj_cm33_ns_signed.hex&quot; : ($idx == 2 ? &quot;../../../../build/project_hex/proj_cm55_signed.hex&quot; : &quot;../../../../build/project_hex/app_$idx_signed.hex&quot;))}`"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Path to the output signed hex file for application $idx. Path is relative to the SignerCombiner JSON file location." />
+        desc="Path to the output signed hex file for project $idx. Path is relative to the SignerCombiner JSON file location." />
 
-      <!-- Application $idx Base Addresses -->
+      <!-- project $idx Base Addresses -->
       <ParamString
         id="app$idx_secondary_memory_id"
         name="Secondary slot memory ID"
-        group="Application $idx Configuration/Internal Calculations"
+        group="Project $idx Configuration/Internal Calculations"
         default='`${app$idx_secondary_region ne &quot;&quot; ? getExposedMember(getBlockFromInstance(app$idx_secondary_region), &quot;memoryId&quot;) : &quot;&quot;}`'
         editable="false"
         visible="false"
-        desc="Memory ID of the selected secondary slot region for application $idx" />
-      
+        desc="Memory ID of the selected secondary slot region for project $idx" />
+
       <ParamString
         id="app$idx_secondary_memory_offset"
         name="Secondary slot memory offset"
-        group="Application $idx Configuration/Internal Calculations"
+        group="Project $idx Configuration/Internal Calculations"
         default='`${getExposedMember(getBlockFromInstance(app$idx_secondary_region), &quot;offset&quot;)}`'
         editable="false"
         visible="false"
-        desc="Memory offset of the selected secondary slot region for application $idx" />
-      
+        desc="Memory offset of the selected secondary slot region for project $idx" />
+
       <ParamString
         id="app$idx_secondary_memory_view_maps"
         name="Secondary slot view maps"
-        group="Application $idx Configuration/Internal Calculations"
+        group="Project $idx Configuration/Internal Calculations"
         default='`${app$idx_secondary_memory_id ne &quot;&quot; ? memoryViewMaps(app$idx_secondary_memory_id, &quot;CORE_NAME_CM33_0_S&quot;) : &quot;&quot;}`'
         editable="false"
         visible="false"
-        desc="Available view maps for secondary slot memory of application $idx" />
-      
+        desc="Available view maps for secondary slot memory of project $idx" />
+
       <ParamString
         id="app$idx_secondary_base_address_dynamic"
         name="Secondary slot base address (Dynamic)"
-        group="Application $idx Configuration/Internal Calculations"
+        group="Project $idx Configuration/Internal Calculations"
         default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, app$idx_secondary_memory_view_maps ne &quot;&quot; ? splitAt(app$idx_secondary_memory_view_maps, 0) : &quot;&quot;, app$idx_secondary_memory_id, 0))}`'
         editable="false"
         visible="false"
-        desc="Dynamically calculated base address using Memory Context API for application $idx secondary slot" />
-      
+        desc="Dynamically calculated base address using Memory Context API for project $idx secondary slot" />
+
       <ParamString
         id="app$idx_secondary_absolute_address"
         name="Secondary slot absolute address"
-        group="Application $idx Configuration/Internal Calculations"
+        group="Project $idx Configuration/Internal Calculations"
         default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, app$idx_secondary_memory_view_maps ne &quot;&quot; ? splitAt(app$idx_secondary_memory_view_maps, 0) : &quot;&quot;, app$idx_secondary_memory_id, app$idx_secondary_memory_offset))}`'
         editable="false"
         visible="false"
-        desc="Absolute address (base + offset) for secondary slot region of application $idx" />
+        desc="Absolute address (base + offset) for secondary slot region of project $idx" />
 
-       <!-- Application $idx Signature -->
+       <!-- project $idx Signature -->
       <ParamString
         id="app$idx_signature_key_id"
         name="Signing key ID"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="1"
-        editable="true"
+        editable="false"
         visible='`${validate_upgrade_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`'
-        desc="Signature key ID for application $idx used by the bootloader to verify signature of this image" />
+        desc="Signature key ID for project $idx used by the bootloader to verify signature of this image" />
       <ParamString
         id="app$idx_signature_priv_key_path"
         name="Signing private key path"
-        group="Application $idx Configuration/Build &amp; Deployment"
-        default="../../../../keys/oem_private_key_0.pem"
+        group="Project $idx Configuration/Build &amp; Deployment"
+        default="`${oem_private_key_path}`"
+        editable="false"
+        visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
+        desc="Path to the private key used for signing of project $idx. Path is relative to the SignerCombiner JSON file location." />
+      <ParamString
+        id="app$idx_data_encryption_key_path"
+        name="AES128 Data Encryption Key(DEK) path"
+        group="Project $idx Configuration/Build &amp; Deployment"
+        default="../../../../keys/aes_key_`${$idx + 1}`.bin"
         editable="true"
-        visible='`${validate_upgrade_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`'
-        desc="Path to the private key used for signing of application  $idx. Path is relative to the SignerCombiner JSON file location." />
-      
-     <!-- Application $idx measured boot -->
+        visible='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_multi_keys" || image_encryption eq "se_rt_encryption") &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`'
+        desc="Path to the AES128 Data Encryption Key(DEK) file. Path is relative to the SignerCombiner JSON file location." />
+
+     <!-- project $idx measured boot -->
      <ParamString
         id="app$idx_image_version"
         name="Image version"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="1.0.0"
         editable="true"
         visible='`${(measured_boot eq true || dependency_check eq true || sw_downgrade_prevention_enabled) ? $idx == 0 ? true : $idx &lt; image_count : false}`'
@@ -575,16 +657,16 @@
        <ParamString
         id="app$idx_image_boot_record"
         name="Image boot record"
-        group="Application $idx Configuration/Build &amp; Deployment"
+        group="Project $idx Configuration/Build &amp; Deployment"
         default="App_$idx"
         editable="true"
         visible='`${measured_boot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`'
         desc="Image boot record (12 characters max)" />
-        
+
      <ParamString
         id="app$idx_image_dependencies"
         name="Image dependencies"
-        group="Application $idx Configuration/Hardware Security &amp; Compliance"
+        group="Project $idx Configuration/Hardware Security &amp; Compliance"
         default=""
         editable="true"
         visible='`${dependency_check eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`'
@@ -593,16 +675,16 @@
       <ParamString
         id="app$idx_hw_rollback_number"
         name="HW security counter number"
-        group="Application $idx Configuration/Hardware Security &amp; Compliance"
+        group="Project $idx Configuration/Hardware Security &amp; Compliance"
         default='`${2 + $idx}`'
         editable="true"
         visible='`${hw_rollback_protection &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`'
         desc="Security counter number for image $idx, range 0-15, 0 and 1 are reserved for using by Extended Boot" />
-     
+
      <ParamString
         id="app$idx_hw_rollback_value"
         name="HW security counter value"
-        group="Application $idx Configuration/Hardware Security &amp; Compliance"
+        group="Project $idx Configuration/Hardware Security &amp; Compliance"
         default="1"
         editable="true"
         visible='`${hw_rollback_protection &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`'
@@ -619,7 +701,7 @@
         visible="false"
         editable="false"
         desc="QSPI configuration file name" />
-    
+
     <ParamString
         id="cfgFilePath"
         name="QSPI Config Path"
@@ -628,7 +710,7 @@
         visible="false"
         editable="false"
         desc="Path to QSPI configuration file" />
-    
+
     <ParamCustom
         id="qspi_configurator"
         name="QSPI Configurator"
@@ -650,7 +732,7 @@
         visible="false"
         editable="false"
         desc="List of all available physical memories in the device" />
-    
+
     <ParamRange
         id="memory_count"
         name="Memory Count"
@@ -662,7 +744,7 @@
         visible="false"
         editable="false"
         desc="Total number of available memories" />
-    
+
     <ParamRange
         id="region_count"
         name="Region Count"
@@ -685,7 +767,7 @@
         visible="false"
         editable="false"
         desc="Physical memory ID $idx" />
-      
+
       <ParamBool
         id="is_smif_memory_$idx"
         name="Is SMIF Memory $idx"
@@ -694,7 +776,7 @@
         visible="false"
         editable="false"
         desc="True if this is a SMIF/QSPI external memory" />
-      
+
       <ParamString
         id="memory_display_name_$idx"
         name="Memory Name $idx"
@@ -703,7 +785,7 @@
         visible="false"
         editable="false"
         desc="Display name for memory $idx" />
-      
+
       <ParamString
         id="memory_size_$idx"
         name="Memory Size $idx"
@@ -712,7 +794,7 @@
         visible="false"
         editable="false"
         desc="Size of memory $idx in hex" />
-      
+
       <ParamString
         id="memory_alignment_$idx"
         name="Memory Alignment $idx"
@@ -731,7 +813,7 @@
         visible="false"
         editable="false"
         desc="Available view maps for memory $idx" />
-      
+
       <ParamString
         id="memory_base_address_$idx"
         name="Base Address $idx"
@@ -753,7 +835,7 @@
         visible="false"
         editable="false"
         desc="Memory ID to check" />
-      
+
       <ParamBool
         id="is_smif_check_$idx"
         name="Is SMIF Check $idx"
@@ -796,7 +878,7 @@
         visible="false"
         editable="false"
         desc="First detected QSPI memory ID" />
-    
+
     <ParamString
         id="second_smif_memory"
         name="Second QSPI Memory"
@@ -815,7 +897,7 @@
         visible="false"
         editable="false"
         desc="Size of first QSPI memory in decimal" />
-    
+
     <ParamString
         id="first_smif_memory_alignment"
         name="First QSPI Memory Alignment"
@@ -824,7 +906,7 @@
         visible="false"
         editable="false"
         desc="Alignment/erase size of first QSPI memory in decimal" />
-    
+
     <ParamString
         id="first_smif_memory_view_maps"
         name="First QSPI Memory View Maps"
@@ -833,7 +915,7 @@
         visible="false"
         editable="false"
         desc="View maps for first QSPI memory" />
-    
+
     <ParamString
         id="first_smif_memory_ns_base_address"
         name="First QSPI Memory NS Base Address"
@@ -842,7 +924,7 @@
         visible="false"
         editable="false"
         desc="NS base address of first QSPI memory in decimal" />
-    
+
     <ParamString
         id="first_smif_memory_s_base_address"
         name="First QSPI Memory S Base Address"
@@ -861,7 +943,7 @@
         visible="false"
         editable="false"
         desc="Size of SRAM memory in decimal" />
-    
+
     <ParamString
         id="sram_memory_alignment"
         name="SRAM Memory Alignment"
@@ -870,7 +952,7 @@
         visible="false"
         editable="false"
         desc="Alignment/erase size of SRAM memory in decimal" />
-    
+
     <ParamString
         id="sram_memory_view_maps"
         name="SRAM Memory View Maps"
@@ -879,7 +961,7 @@
         visible="false"
         editable="false"
         desc="View maps for SRAM memory" />
-    
+
     <ParamString
         id="sram_memory_ns_base_address"
         name="SRAM Memory NS Base Address"
@@ -888,7 +970,7 @@
         visible="false"
         editable="false"
         desc="NS base address of SRAM memory in decimal" />
-    
+
     <ParamString
         id="sram_memory_s_base_address"
         name="SRAM Memory S Base Address"
@@ -907,7 +989,7 @@
         visible="false"
         editable="false"
         desc="Size of RRAM memory in decimal" />
-    
+
     <ParamString
         id="rram_memory_alignment"
         name="RRAM Memory Alignment"
@@ -916,7 +998,7 @@
         visible="false"
         editable="false"
         desc="Alignment/erase size of RRAM memory in decimal" />
-    
+
     <ParamString
         id="rram_memory_view_maps"
         name="RRAM Memory View Maps"
@@ -925,7 +1007,7 @@
         visible="false"
         editable="false"
         desc="View maps for RRAM memory" />
-    
+
     <ParamString
         id="rram_memory_base_address"
         name="RRAM Memory Base Address"
@@ -944,7 +1026,7 @@
         visible="false"
         editable="false"
         desc="All memory IDs used by regions" />
-    
+
     <ParamString
         id="all_region_offsets"
         name="Region Offsets"
@@ -953,7 +1035,7 @@
         visible="false"
         editable="false"
         desc="All region offsets" />
-    
+
     <ParamString
         id="all_region_sizes"
         name="Region Sizes"
@@ -965,141 +1047,77 @@
 
     <!-- Manual Memory Configuration Section -->
 
-    <ParamString                                                                                        
-        id="memIdList"                                                                                    
-        default='`${memoryIds()}`' />                                                                     
-    <ParamString                                                                                        
-        id="memCount"                                                                                     
-        default='`${splitCount(memIdList)}`' />                                                           
+    <ParamString
+        id="memIdList"
+        default='`${memoryIds()}`' />
+    <ParamString
+        id="memCount"
+        default='`${splitCount(memIdList)}`' />
 
-    <!-- Manual Memory Configuration for Applications -->
+    <!-- Manual Memory Configuration for Projects -->
     <Repeat count="$MAX_APPLICATIONS">
       <!-- Manual Primary Slot Configuration -->
       <ParamChoice
         id="app$idx_manual_primary_memory"
         name="Primary slot memory"
-        group="Application $idx Configuration/Primary Slot Configuration"
+        group="Project $idx Configuration/Primary Slot Configuration"
         default="RRAM"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Select memory type for application $idx primary slot">
-        <Entry                                                                                            
-            value='`${$idx &lt; memCount ? splitAt(memIdList, $idx) : &quot;$idx&quot;}`'                   
-            name='`${$idx &lt; memCount ? memoryDisplayName(splitAt(memIdList, $idx)) : &quot;$idx&quot;}`' 
-            visible='`${$idx{1} &lt; image_count ? $idx &lt; memCount : false}`'                                                               
-            repeatCount="$MAX_MEMORIES" />                                                                             
+        desc="Select memory type for project $idx primary slot">
+        <Entry
+            value='`${$idx &lt; memCount ? splitAt(memIdList, $idx) : &quot;$idx&quot;}`'
+            name='`${$idx &lt; memCount ? memoryDisplayName(splitAt(memIdList, $idx)) : &quot;$idx&quot;}`'
+            visible='`${$idx{1} &lt; image_count ? $idx &lt; memCount : false}`'
+            repeatCount="$MAX_MEMORIES" />
       </ParamChoice>
 
-      <ParamString 
-            id="app$idx_manual_primary_description"   
-            name="Slot $idx Description" 
-            group="Application $idx Configuration/Primary Slot" 
+      <ParamString
+            id="app$idx_manual_primary_description"
+            name="Slot $idx Description"
+            group="Project $idx Configuration/Primary Slot"
             visible="false"
-            editable="false" 
-            default="Defintion of primary slot for application $idx"
-            desc="Description of primary slot for application $idx" />
+            editable="false"
+            default="Defintion of primary slot for project $idx"
+            desc="Description of primary slot for project $idx" />
 
-      <ParamString 
-            id="app$idx_manual_primary_name"   
-            name="app_$idx_primary_slot" 
-            group="Application $idx Configuration/Primary Slot" 
+      <ParamString
+            id="app$idx_manual_primary_name"
+            name="app_$idx_primary_slot"
+            group="Project $idx Configuration/Primary Slot"
             visible="false"
-            editable="false" 
+            editable="false"
             default="app_$idx_primary_slot"
-            desc="Description of primary slot for application $idx" />
+            desc="Description of primary slot for project $idx" />
 
       <ParamString
         id="app$idx_manual_primary_offset"
         name="Primary slot offset"
-        group="Application $idx Configuration/Primary Slot Configuration"
+        group="Project $idx Configuration/Primary Slot Configuration"
         default="0x00000000"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Hex offset within selected memory for application $idx primary slot" />
+        desc="Hex offset within selected memory for project $idx primary slot" />
 
       <ParamString
         id="app$idx_manual_primary_size"
         name="Primary slot size"
-        group="Application $idx Configuration/Primary Slot Configuration"
+        group="Project $idx Configuration/Primary Slot Configuration"
         default="0x00100000"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Hex size of application $idx primary slot" />
+        desc="Hex size of project $idx primary slot" />
 
       <!-- Secure Access Configuration -->
       <ParamBool
         id="app$idx_secure_access"
         name="Secure Access"
-        group="Application $idx Configuration/Primary Slot Configuration"
+        group="Project $idx Configuration/Primary Slot Configuration"
         default="false"
         editable="true"
         visible="`${$idx == 0 ? true : $idx &lt; image_count}`"
-        desc="Enable secure access for application $idx" />
+        desc="Enable secure access for project $idx" />
     </Repeat>
-
-    <!-- Image encryption -->
-    <ParamChoice
-        id="image_encryption"
-        name="Image encryption"
-        group="MCUBoot config"
-        default="off"
-        editable="true"
-        visible='`${validate_boot_slot eq true &amp;&amp; validate_upgrade_slot eq true}`'
-        desc="Selects the image encryption mode">
-      <Entry name="Off" value="off" visible="true" />
-      <Entry name="XIP encryption single AES key (+ ECIES P256)" value="xip_single_key" visible="`${upgrade_mode eq &quot;overwrite&quot;}`" />
-      <Entry name="XIP encryption multi AES keys (+ ECIES P256)" value="xip_multi_keys" visible="false" />
-      <Entry name="SE RT encryption" value="se_rt_encryption" visible="false" />
-    </ParamChoice>
-    
-    <ParamBool
-        id="image_encryption_enabled"
-        name="Image encryption enabled"
-        group="Application $idx Configuration/Primary Slot Configuration"
-        default='`${validate_boot_slot eq true &amp;&amp; validate_upgrade_slot eq true &amp;&amp; image_encryption ne "off"}`'
-        editable="false"
-        visible="false"
-        desc="Image encryption enabled" />
-
-    <!-- Pivate Key encryption key address (visible when XIP encryption is selected) -->
-    <ParamString
-        id="key_encryption_key_address"
-        name="Private Key Encryption Key(KEK) address"
-        group="MCUBoot config"
-        default="0x3203A000"
-        editable="true"
-        visible='`${image_encryption_enabled eq true &amp;&amp;  (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`'
-        desc="Hex address of pivate EC256 key encryption key (KEK) in the device. Key image must programmed separately to the memorory " />
-        
-    <!-- Public Key encryption key address (visible when XIP encryption is selected) -->
-    <ParamString
-        id="key_encryption_key_path"
-        name="Public Key Encryption Key(KEK) path"
-        group="MCUBoot config"
-        default="../../../../keys/enc-ec256-pub.pem"
-        editable="true"
-        visible='`${image_encryption_enabled eq true &amp;&amp;  (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`'
-        desc="Path to the public EC256 key encryption key (KEK) file. Path is relative to the SignerCombiner JSON file location." />
-        
-   <!-- AES128 cipher key -->
-    <ParamString
-        id="data_encryption_key_path"
-        name="AES128 Data Encryption Key(DEK) path"
-        group="MCUBoot config"
-        default="../../../../keys/aes128_key.bin"
-        editable="true"
-        visible='`${image_encryption_enabled eq true &amp;&amp;  (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`'
-        desc="Path to the AES128 Data Encryption Key(DEK) file. Path is relative to the SignerCombiner JSON file location." />
-        
-   <!-- Nonce output file -->
-    <ParamString
-        id="nonce_output_file_path"
-        name="NONCE output file path"
-        group="MCUBoot config"
-        default="../../../../keys/nonce.bin"
-        editable="true"
-        visible='`${image_encryption_enabled eq true &amp;&amp;  (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`'
-        desc="During the signing of the first image the random NONCE is generated. This NONCE value must be saved and then be used for encrypting of other images. Path is relative to the SignerCombiner JSON file location." />
 
     <!-- Stage SE RAM App -->
     <ParamBool
@@ -1111,25 +1129,28 @@
         visible="true"
         desc="Enables staging SE RAM application" />
 
-    <!-- SE RAM App staging address (visible when Stage SE RAM App is selected) -->
-    <ParamString
-        id="se_ram_app_staging_address"
-        name="SE RAM App staging address"
+    <!-- SE RAM App Memory Storage Region Selection -->
+    <ParamPersonality
+        id="se_ram_app_staging_region"
+        name="SE RAM App staging storage region"
         group="MCUBoot config/SE RAM App Staging"
-        default="0x70400000"
-        editable="true"
         visible="`${stage_se_ram_app eq true}`"
-        desc="Hex address for SE RAM App staging" />
+        editable="true"
+        blockType="vres\.memory_region_data"
+        canBeEmpty="true"
+        multiSelect="false"
+        displayMemberKey="regionId"
+        desc="Select existing memory storage region for SE RAM App staging area" />
 
-    <!-- SE RAM App staging size (visible when Stage SE RAM App is selected) -->
+    <!-- SE RAM App staging RAM address (visible when Stage SE RAM App is selected) -->
     <ParamString
-        id="se_ram_app_staging_size"
-        name="SE RAM App staging size"
+        id="se_ram_app_staging_ram_address"
+        name="SE RAM App staging RAM address"
         group="MCUBoot config/SE RAM App Staging"
-        default="0x40000"
+        default="0x34002000"
         editable="true"
         visible="`${stage_se_ram_app eq true}`"
-        desc="Hex size for SE RAM App staging" />
+        desc="Hex address for SE RAM App staging in RAM" />
 
     <!-- Watchdog -->
     <ParamBool
@@ -1151,7 +1172,7 @@
         editable="true"
         visible="true"
         desc="Path to the mbedTLS crypto configuration file" />
-    
+
     <ParamString
         id="mbedtls_psa_crypto_config_file"
         name="Mbedtls PSA crypto configuration file"
@@ -1176,48 +1197,58 @@
         default="`${INST_LOC}`"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         name=""
         desc="" />
     <ParamBool
         id="bootloader_nvm_its_MEMORY_PLACED"
         name="Bootloader NVM Region"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="true"
         visible="true"
         editable="true"
         desc="Enables bootloader NVM memory region" />
 
+    <!-- KEK Region Placement -->
+    <ParamBool
+        id="kek_region_MEMORY_PLACED"
+        name="KEK Region"
+        group="Bootloader Configuration"
+        default='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`'
+        visible="false"
+        editable="false"
+        desc="Enables Key Encryption Key (KEK) memory region" />
+
     <ParamBool
         id="bootloader_sram_region_MEMORY_PLACED"
         name="Bootloader SRAM Data Region"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="false"
         visible="false"
         editable="true"
         desc="Enables bootloader SRAM data memory region" />
     <ParamBool
         id="bootloader_sram_code_region_MEMORY_PLACED"
-        name="Bootloader SRAM Code Region"
-        group="Bootloader Application Configuration"
+        name="Bootloader SRAM load"
+        group="Bootloader Configuration"
         default="false"
-        visible="false"
+        visible="true"
         editable="true"
         desc="Enables bootloader SRAM code memory region" />
 
     <ParamBool
         id="bootloader_signature_enable"
         name="Enable Bootloader Signing"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="false"
         visible="true"
         editable="true"
         desc="Enable Bootloader Signig and Bootloader HW security counter. Signature and security counter are required for bootloader image if secure_boot = true in the Extended Boot policy" />
-        
+
     <ParamString
         id="bootloader_hw_rollback_value"
         name="HW security counter value"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default="1"
         editable="true"
         visible='`${bootloader_signature_enable}`'
@@ -1226,29 +1257,29 @@
     <ParamString
         id="bootloader_signature_priv_key_path"
         name="Signing private key path"
-        group="Bootloader Application Configuration"
-        default="../../../../keys/oem_private_key_0.pem"
-        editable="true"
-        visible='`${bootloader_signature_enable}`'
+        group="Bootloader Configuration"
+        default="`${oem_private_key_path}`"
+        editable="false"
+        visible="false"
         desc="Path to the private key used for signing of the bootloader image. The bootloader must always be signed by OEM RoT key(key ID is always equal '1'). Path is relative to the SignerCombiner JSON file location." />
 
     <!-- Swap Mode Memory Region Selectors -->
     <ParamPersonality
         id="swap_status_region"
         name="Swap Status Region"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         visible="`${upgrade_mode eq &quot;swap&quot;}`"
         editable="true"
         blockType="vres\.memory_region_data"
         canBeEmpty="true"
         multiSelect="false"
         displayMemberKey="regionId"
-        desc="Select existing memory region for swap status area (required for swap mode)" />
+        desc="Select existing memory region for swap status area (required for swap mode). Must be placed in RRAM. Recommended size is 16-32KB" />
 
     <ParamString
         id="swap_status_region_location"
         name="Swap status region location"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         visible="false"
         editable="false"
         default="`${swap_status_region}`"
@@ -1257,19 +1288,19 @@
     <ParamPersonality
         id="scratch_region"
         name="Scratch Region"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         visible="`${upgrade_mode eq &quot;swap&quot;}`"
         editable="true"
         blockType="vres\.memory_region_data"
         canBeEmpty="true"
         multiSelect="false"
         displayMemberKey="regionId"
-        desc="Select existing memory region for scratch area (required for swap mode)" />
+        desc="Select existing memory region for scratch area (required for swap mode). The size must be multiple of the erase size. If memories with different size are used then the size of the scratch area must be multiple of the biggest erase size" />
 
     <ParamString
         id="scratch_region_location"
         name="Scratch region location"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         visible="false"
         editable="false"
         default="`${scratch_region}`"
@@ -1279,25 +1310,25 @@
     <ParamString
         id="bootloader_memory_id"
         name="Bootloader memory ID"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${bootloader_nvm_its_MEMORY_PLACED eq true ? getExposedMember(findMemoryRegionByGuid("7F3E9B2A-5C8D-4E1F-9A6B-3D7C2E8F1A4B"), "memoryId") : "RRAM"}`'
         editable="false"
         visible="false"
         desc="Memory ID of the bootloader region" />
-    
+
     <ParamString
         id="bootloader_memory_view_maps"
         name="Bootloader memory view maps"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${bootloader_memory_id ne &quot;&quot; ? memoryViewMaps(bootloader_memory_id, &quot;CORE_NAME_CM33_0_S&quot;) : &quot;&quot;}`'
         editable="false"
         visible="false"
         desc="Available view maps for bootloader memory" />
-    
+
     <ParamString
         id="bootloader_base_address_dynamic"
         name="Bootloader base address (Dynamic)"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, bootloader_memory_view_maps ne &quot;&quot; ? splitAt(bootloader_memory_view_maps, 0) : &quot;&quot;, bootloader_memory_id, 0))}`'
         editable="false"
         visible="false"
@@ -1306,25 +1337,25 @@
     <ParamString
         id="scratch_memory_id"
         name="Scratch memory ID"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${scratch_region ne "" ? getExposedMember(getBlockFromInstance(scratch_region), "memoryId") : "RRAM"}`'
         editable="false"
         visible="false"
         desc="Memory ID of the scratch region" />
-    
+
     <ParamString
         id="scratch_memory_view_maps"
         name="Scratch memory view maps"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${scratch_memory_id ne &quot;&quot; ? memoryViewMaps(scratch_memory_id, &quot;CORE_NAME_CM33_0_S&quot;) : &quot;&quot;}`'
         editable="false"
         visible="false"
         desc="Available view maps for scratch memory" />
-    
+
     <ParamString
         id="scratch_base_address_dynamic"
         name="Scratch base address (Dynamic)"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, scratch_memory_view_maps ne &quot;&quot; ? splitAt(scratch_memory_view_maps, 0) : &quot;&quot;, scratch_memory_id, 0))}`'
         editable="false"
         visible="false"
@@ -1333,34 +1364,62 @@
     <ParamString
         id="swap_status_memory_id"
         name="Swap status memory ID"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${swap_status_region ne "" ? getExposedMember(getBlockFromInstance(swap_status_region), "memoryId") : "RRAM"}`'
         editable="false"
         visible="false"
         desc="Memory ID of the swap status region" />
-    
+
     <ParamString
         id="swap_status_memory_view_maps"
         name="Swap status memory view maps"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${swap_status_memory_id ne &quot;&quot; ? memoryViewMaps(swap_status_memory_id, &quot;CORE_NAME_CM33_0_S&quot;) : &quot;&quot;}`'
         editable="false"
         visible="false"
         desc="Available view maps for swap status memory" />
-    
+
     <ParamString
         id="swap_status_base_address_dynamic"
         name="Swap status base address (Dynamic)"
-        group="Bootloader Application Configuration"
+        group="Bootloader Configuration"
         default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, swap_status_memory_view_maps ne &quot;&quot; ? splitAt(swap_status_memory_view_maps, 0) : &quot;&quot;, swap_status_memory_id, 0))}`'
         editable="false"
         visible="false"
         desc="Dynamically calculated base address using Memory Context API for swap status region" />
 
+    <!-- KEK Memory Dynamic Base Address Parameters -->
+    <ParamString
+        id="kek_memory_id"
+        name="KEK memory ID"
+        group="Bootloader Configuration"
+        default='`${kek_region_MEMORY_PLACED eq true ? getExposedMember(findMemoryRegionByGuid("8A4F5C3E-6D9B-4A1E-5F8C-7A2D9E4B6F3A"), "memoryId") : "RRAM"}`'
+        editable="false"
+        visible="false"
+        desc="Memory ID of the KEK region" />
+
+    <ParamString
+        id="kek_memory_view_maps"
+        name="KEK memory view maps"
+        group="Bootloader Configuration"
+        default='`${kek_memory_id ne &quot;&quot; ? memoryViewMaps(kek_memory_id, &quot;CORE_NAME_CM33_0_S&quot;) : &quot;&quot;}`'
+        editable="false"
+        visible="false"
+        desc="Available view maps for KEK memory" />
+
+    <ParamString
+        id="kek_base_address_dynamic"
+        name="KEK base address (Dynamic)"
+        group="Bootloader Configuration"
+        default='`${toHex(memoryOffsetToAddress(&quot;CORE_NAME_CM33_0_S&quot;, kek_memory_view_maps ne &quot;&quot; ? splitAt(kek_memory_view_maps, 0) : &quot;&quot;, kek_memory_id, 0))}`'
+        editable="false"
+        visible="false"
+        desc="Dynamically calculated base address using Memory Context API for KEK region" />
+
     <ParamPlacement
         templateId="reserved_memory_region_its"
         name="Placement"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         visible="false"
         desc="" />
     <ParamString
@@ -1369,7 +1428,7 @@
         default="`${INST_LOC}`"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1378,7 +1437,7 @@
         default="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;, &quot;parentLocation&quot;)}`"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1387,7 +1446,7 @@
         default="7F3E9B2A-5C8D-4E1F-9A6B-3D7C2E8F1A4B"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name="GUID"
         desc="" />
     <ParamBool
@@ -1396,7 +1455,7 @@
         default="false"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1406,7 +1465,7 @@
         default="bootloader_nvm"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_its"
@@ -1414,7 +1473,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1424,7 +1483,7 @@
         default="0x00028000"
         visible="false"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_its"
@@ -1432,7 +1491,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1442,7 +1501,7 @@
         default="0x00011000"
         visible="false"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_its"
@@ -1450,7 +1509,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamString
@@ -1460,7 +1519,7 @@
         default="CORE_NAME_CM33_0_S"
         visible="false"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_its"
@@ -1468,7 +1527,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         name=""
         desc="" />
     <ParamChoice
@@ -1478,7 +1537,7 @@
         default="RRAM"
         visible="false"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="Memory type for the bootloader NVM region">
       <Entry name="RRAM" value="RRAM" visible="true" />
       <Entry name="Serial Memory Interface" value="SMIF0MEM1" visible="true" />
@@ -1490,7 +1549,7 @@
         default="Readable"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamString
         templateId="reserved_memory_region_its"
@@ -1499,7 +1558,7 @@
         default="false"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
         desc="" />
     <ParamString
         templateId="reserved_memory_region_its"
@@ -1508,7 +1567,163 @@
         default='`${getInstanceFromBlock(getBlockFromAlias("M33S"))}`'
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_NVM"
+        group="Bootloader Configuration/BOOTLOADER_NVM"
+        desc="" />
+    <!-- ########################### -->
+
+    <!-- KEK Region -->
+    <ParamPlacement
+        templateId="reserved_memory_region_kek"
+        name="Placement"
+        group="Bootloader Configuration/KEK_REGION"
+        visible="false"
+        desc="Key Encryption Key (KEK) region placement" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="location"
+        default="`${INST_LOC}`"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="parentLoc"
+        default="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;, &quot;parentLocation&quot;)}`"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="guid"
+        default="8A4F5C3E-6D9B-4A1E-5F8C-7A2D9E4B6F3A"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name="GUID"
+        desc="" />
+    <ParamBool
+        templateId="reserved_memory_region_kek"
+        id="is_name_user_editable"
+        default="false"
+        editable="false"
+        visible="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="name"
+        name="Region Id"
+        default="kek_region"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamBool
+        templateId="reserved_memory_region_kek"
+        id="is_size_user_editable"
+        default="true"
+        editable="false"
+        visible="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="size"
+        name="Default Size"
+        default="0x1000"
+        visible="false"
+        editable="true"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamBool
+        templateId="reserved_memory_region_kek"
+        id="is_offset_user_editable"
+        default="true"
+        editable="false"
+        visible="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="offset"
+        name="Default Offset"
+        default="0x00000000"
+        visible="false"
+        editable="true"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamBool
+        templateId="reserved_memory_region_kek"
+        id="is_cores_user_editable"
+        default="true"
+        editable="false"
+        visible="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="cores"
+        name="Default Core(s)"
+        default="CORE_NAME_CM33_0_S"
+        visible="false"
+        editable="true"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamBool
+        templateId="reserved_memory_region_kek"
+        id="is_memory_user_editable"
+        default="true"
+        editable="false"
+        visible="false"
+        group="Bootloader Configuration/KEK_REGION"
+        name=""
+        desc="" />
+    <ParamChoice
+        templateId="reserved_memory_region_kek"
+        id="memory"
+        name="Default Memory"
+        default="RRAM"
+        visible="false"
+        editable="true"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="Memory type for the KEK region">
+      <Entry name="RRAM" value="RRAM" visible="true" />
+      <Entry name="Serial Memory Interface" value="SMIF0MEM1" visible="true" />
+    </ParamChoice>
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="required_memory_capabilities"
+        name="Required Capabilities"
+        default="Readable"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="is_protection_user_editable"
+        name="Protection Editable"
+        default="false"
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
+        desc="" />
+    <ParamString
+        templateId="reserved_memory_region_kek"
+        id="protection"
+        name="protection"
+        default='`${getInstanceFromBlock(getBlockFromAlias("M33S"))}`'
+        visible="false"
+        editable="false"
+        group="Bootloader Configuration/KEK_REGION"
         desc="" />
     <!-- ########################### -->
 
@@ -1516,7 +1731,7 @@
     <ParamPlacement
         templateId="reserved_memory_region_bootloader"
         name="Placement"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_region_MEMORY_PLACED&quot;)}`"
         desc="Bootloader SRAM data region placement" />
     <ParamString
@@ -1525,7 +1740,7 @@
         default="`${INST_LOC}`"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1534,7 +1749,7 @@
         default="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;, &quot;parentLocation&quot;)}`"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1543,7 +1758,7 @@
         default="A9F4C7E2-6B1D-4A3E-8F5C-2D9A7B4E6C8F"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name="GUID"
         desc="" />
     <ParamBool
@@ -1552,7 +1767,7 @@
         default="false"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1562,7 +1777,7 @@
         default="bootloader_sram"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_bootloader"
@@ -1570,7 +1785,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1580,7 +1795,7 @@
         default="0x00001000"
         visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_region_MEMORY_PLACED&quot;)}`"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="Size of bootloader SRAM data region" />
     <ParamBool
         templateId="reserved_memory_region_bootloader"
@@ -1588,7 +1803,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1598,7 +1813,7 @@
         default="0x00000000"
         visible="false"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="" />
     <ParamBool
         templateId="reserved_memory_region_bootloader"
@@ -1606,7 +1821,7 @@
         default="true"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1616,7 +1831,7 @@
         default="CORE_NAME_CM33_0_S"
         visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_region_MEMORY_PLACED&quot;)}`"
         editable="true"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="Cores that can access this region" />
     <ParamBool
         templateId="reserved_memory_region_bootloader"
@@ -1624,7 +1839,7 @@
         default="false"
         editable="false"
         visible="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         name=""
         desc="" />
     <ParamString
@@ -1634,7 +1849,7 @@
         default="SRAM"
         visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_region_MEMORY_PLACED&quot;)}`"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="Memory type" />
     <ParamString
         templateId="reserved_memory_region_bootloader"
@@ -1643,7 +1858,7 @@
         default="Readable,Writable"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="" />
     <ParamString
         templateId="reserved_memory_region_bootloader"
@@ -1652,7 +1867,7 @@
         default="false"
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="" />
     <ParamString
         templateId="reserved_memory_region_bootloader"
@@ -1661,36 +1876,36 @@
         default='`${getInstanceFromBlock(getBlockFromAlias("M33S"))}`'
         visible="false"
         editable="false"
-        group="Bootloader Application Configuration/BOOTLOADER_SRAM"
+        group="Bootloader Configuration/BOOTLOADER_SRAM"
         desc="" />
     <!-- ########################### -->
 
     <!-- Bootloader SRAM Code Region -->
-    <ParamPlacement templateId="reserved_memory_region_bootloader_code" name="Placement_code" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`" desc="Bootloader SRAM code region placement" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="location" default="`${INST_LOC}`" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="parentLoc" default="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;, &quot;parentLocation&quot;)}`" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="guid" default="E1B8F5A3-9C4D-4F2E-7A6B-8D3C5E9F2A7B" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="GUID" desc="" />
-    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_name_user_editable" default="false" editable="false" visible="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="name" name="Region Id" default="bootloader_sram_code" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="" />
-    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_size_user_editable" default="true" editable="false" visible="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="size" name="Default Size" default="0x00001000" visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`" editable="true" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="Size of bootloader SRAM code region" />
-    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_offset_user_editable" default="true" editable="false" visible="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="offset" name="Default Offset" default="0x00000000" visible="false" editable="true" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="" />
-    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_cores_user_editable" default="true" editable="false" visible="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="cores" name="Default Core(s)" default="CORE_NAME_CM33_0_S" visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`" editable="true" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="Cores that can access this region" />
-    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_memory_user_editable" default="false" editable="false" visible="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="memory" name="Default Memory" default="SRAM" visible="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="Memory type" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="required_memory_capabilities" name="Required Capabilities" default="Readable,Writable,Executable" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="is_protection_user_editable" name="Protection Editable" default="false" visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="" />
-    <ParamString templateId="reserved_memory_region_bootloader_code" id="protection" name="protection" default='`${getInstanceFromBlock(getBlockFromAlias("M33S"))}`' visible="false" editable="false" group="Bootloader Application Configuration/BOOTLOADER_SRAM_CODE" desc="" />
+    <ParamPlacement templateId="reserved_memory_region_bootloader_code" name="Placement_code" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" visible="false" desc="Bootloader SRAM code region placement" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="location" default="`${INST_LOC}`" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="parentLoc" default="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;, &quot;parentLocation&quot;)}`" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="guid" default="E1B8F5A3-9C4D-4F2E-7A6B-8D3C5E9F2A7B" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="GUID" desc="" />
+    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_name_user_editable" default="false" editable="false" visible="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="name" name="Region Id" default="bootloader_sram_code" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="" />
+    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_size_user_editable" default="true" editable="false" visible="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="size" name="Default Size" default="0x00001000" visible="false" editable="true" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="Size of bootloader SRAM code region" />
+    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_offset_user_editable" default="true" editable="false" visible="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="offset" name="Default Offset" default="0x00000000" visible="false" editable="true" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="" />
+    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_cores_user_editable" default="true" editable="false" visible="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="cores" name="Default Core(s)" default="CORE_NAME_CM33_0_S" visible="false" editable="true" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="Cores that can access this region" />
+    <ParamBool templateId="reserved_memory_region_bootloader_code" id="is_memory_user_editable" default="false" editable="false" visible="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" name="" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="memory" name="Default Memory" default="SRAM" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="Memory type" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="required_memory_capabilities" name="Required Capabilities" default="Readable,Writable,Executable" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="is_protection_user_editable" name="Protection Editable" default="false" visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="" />
+    <ParamString templateId="reserved_memory_region_bootloader_code" id="protection" name="protection" default='`${getInstanceFromBlock(getBlockFromAlias("M33S"))}`' visible="false" editable="false" group="Bootloader Configuration/BOOTLOADER_SRAM_CODE" desc="" />
     <!-- ########################### -->
   </Parameters>
 
   <Variables>
     <!-- Debug CMSE attribute access for secondary slot regions -->
     <Variable id='debug_secondary_region_count' value='`${image_count}`' />
-    
-    <!-- Application 0 Variables -->
+
+    <!-- Project 0 Variables -->
     <Variable id='app0_secondary_region_ref' value='`${app0_secondary_region}`' />
     <Variable id='app0_secondary_domain_ref' value='`${app0_secondary_region ne "" ? getExposedMember(getBlockFromInstance(app0_secondary_region), "domain") : ""}`' />
     <Variable id='app0_secondary_cmse_attr' value='`${app0_secondary_domain_ref ne "" ? getExposedMember(getBlockFromInstance(app0_secondary_domain_ref), "cmseAttribute") : "NO_DOMAIN"}`' />
@@ -1701,8 +1916,8 @@
     <Variable id='app0_secondary_var_base_addr' value='`${app0_secondary_base_address_dynamic + (app0_secondary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app0_secondary_var_resultant_addr' value='`${app0_secondary_var_offset ne "" ? toHex(app0_secondary_var_base_addr + app0_secondary_var_offset) : ""}`' />
     <Variable id='app0_secondary_var_erase_val' value='`${app0_secondary_devtype eq "INTERNAL_RRAM" || app0_secondary_memid eq "SRAM" || app0_secondary_memid eq "CM55_ITCM_INTERNAL" || app0_secondary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
-    <!-- Application 1 Variables -->
+
+    <!-- Project 1 Variables -->
     <Variable id='app1_secondary_region_ref' value='`${app1_secondary_region}`' />
     <Variable id='app1_secondary_domain_ref' value='`${app1_secondary_region ne "" ? getExposedMember(getBlockFromInstance(app1_secondary_region), "domain") : ""}`' />
     <Variable id='app1_secondary_cmse_attr' value='`${app1_secondary_domain_ref ne "" ? getExposedMember(getBlockFromInstance(app1_secondary_domain_ref), "cmseAttribute") : "NO_DOMAIN"}`' />
@@ -1713,8 +1928,8 @@
     <Variable id='app1_secondary_var_base_addr' value='`${app1_secondary_base_address_dynamic + (app1_secondary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app1_secondary_var_resultant_addr' value='`${app1_secondary_var_offset ne "" ? toHex(app1_secondary_var_base_addr + app1_secondary_var_offset) : ""}`' />
     <Variable id='app1_secondary_var_erase_val' value='`${app1_secondary_devtype eq "INTERNAL_RRAM" || app1_secondary_memid eq "SRAM" || app1_secondary_memid eq "CM55_ITCM_INTERNAL" || app1_secondary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
-    <!-- Application 2 Variables -->
+
+    <!-- Project 2 Variables -->
     <Variable id='app2_secondary_region_ref' value='`${app2_secondary_region}`' />
     <Variable id='app2_secondary_domain_ref' value='`${app2_secondary_region ne "" ? getExposedMember(getBlockFromInstance(app2_secondary_region), "domain") : ""}`' />
     <Variable id='app2_secondary_cmse_attr' value='`${app2_secondary_domain_ref ne "" ? getExposedMember(getBlockFromInstance(app2_secondary_domain_ref), "cmseAttribute") : "NO_DOMAIN"}`' />
@@ -1725,8 +1940,8 @@
     <Variable id='app2_secondary_var_base_addr' value='`${app2_secondary_base_address_dynamic + (app2_secondary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app2_secondary_var_resultant_addr' value='`${app2_secondary_var_offset ne "" ? toHex(app2_secondary_var_base_addr + app2_secondary_var_offset) : ""}`' />
     <Variable id='app2_secondary_var_erase_val' value='`${app2_secondary_devtype eq "INTERNAL_RRAM" || app2_secondary_memid eq "SRAM" || app2_secondary_memid eq "CM55_ITCM_INTERNAL" || app2_secondary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
-    <!-- Application 3 Variables (extending to MAX_APPLICATIONS) -->
+
+    <!-- Project 3 Variables (extending to MAX_APPLICATIONS) -->
     <Variable id='app3_secondary_region_ref' value='`${app3_secondary_region}`' />
     <Variable id='app3_secondary_domain_ref' value='`${app3_secondary_region ne "" ? getExposedMember(getBlockFromInstance(app3_secondary_region), "domain") : ""}`' />
     <Variable id='app3_secondary_cmse_attr' value='`${app3_secondary_domain_ref ne "" ? getExposedMember(getBlockFromInstance(app3_secondary_domain_ref), "cmseAttribute") : "NO_DOMAIN"}`' />
@@ -1737,8 +1952,8 @@
     <Variable id='app3_secondary_var_base_addr' value='`${app3_secondary_base_address_dynamic + (app3_secondary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app3_secondary_var_resultant_addr' value='`${app3_secondary_var_offset ne "" ? toHex(app3_secondary_var_base_addr + app3_secondary_var_offset) : ""}`' />
     <Variable id='app3_secondary_var_erase_val' value='`${app3_secondary_devtype eq "INTERNAL_RRAM" || app3_secondary_memid eq "SRAM" || app3_secondary_memid eq "CM55_ITCM_INTERNAL" || app3_secondary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
-    <!-- Application 4 Variables (completing MAX_APPLICATIONS) -->
+
+    <!-- Project 4 Variables (completing MAX_APPLICATIONS) -->
     <Variable id='app4_secondary_region_ref' value='`${app4_secondary_region}`' />
     <Variable id='app4_secondary_domain_ref' value='`${app4_secondary_region ne "" ? getExposedMember(getBlockFromInstance(app4_secondary_region), "domain") : ""}`' />
     <Variable id='app4_secondary_cmse_attr' value='`${app4_secondary_domain_ref ne "" ? getExposedMember(getBlockFromInstance(app4_secondary_domain_ref), "cmseAttribute") : "NO_DOMAIN"}`' />
@@ -1749,8 +1964,8 @@
     <Variable id='app4_secondary_var_base_addr' value='`${app4_secondary_base_address_dynamic + (app4_secondary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app4_secondary_var_resultant_addr' value='`${app4_secondary_var_offset ne "" ? toHex(app4_secondary_var_base_addr + app4_secondary_var_offset) : ""}`' />
     <Variable id='app4_secondary_var_erase_val' value='`${app4_secondary_devtype eq "INTERNAL_RRAM" || app4_secondary_memid eq "SRAM" || app4_secondary_memid eq "CM55_ITCM_INTERNAL" || app4_secondary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
-    <!-- Primary Slot Variables for each application -->
+
+    <!-- Primary Slot Variables for each project -->
     <Variable id='app0_primary_cmse_attr' value='`${app0_secure_access ? "SECURE" : "NON_SECURE"}`' />
     <Variable id='app0_primary_memid' value='`${app0_manual_primary_memory}`' />
     <Variable id='app0_primary_devtype' value='`${app0_primary_memid eq "SMIF0MEM0" || app0_primary_memid eq "SMIF0MEM1" || app0_primary_memid eq "SMIF0MEM2" || app0_primary_memid eq "SMIF0MEM3" || app0_primary_memid eq "SMIF1MEM0" || app0_primary_memid eq "SMIF1MEM1" || app0_primary_memid eq "SMIF1MEM2" || app0_primary_memid eq "SMIF1MEM3" ? (app0_primary_cmse_attr eq "SECURE" ? "EXTERNAL_S_FLASH" : "EXTERNAL_NS_FLASH") : (app0_primary_memid eq "RRAM" ? "INTERNAL_RRAM" : "ERROR")}`' />
@@ -1759,7 +1974,7 @@
     <Variable id='app0_primary_var_base_addr' value='`${(app0_primary_memid eq "RRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", rram_memory_view_maps ne "" ? splitAt(rram_memory_view_maps, 0) : "", "RRAM", 0) : (app0_primary_memid eq "SRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", sram_memory_view_maps ne "" ? splitAt(sram_memory_view_maps, 0) : "", "SRAM", 0) : (app0_primary_memid eq "CM55_ITCM_INTERNAL" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S"), 0) : "", "CM55_ITCM_INTERNAL", 0) : (app0_primary_memid eq "SOCMEM_RAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S"), 0) : "", "SOCMEM_RAM", 0) : (first_smif_memory ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", first_smif_memory_view_maps ne "" ? splitAt(first_smif_memory_view_maps, 0) : "", first_smif_memory, 0) : 1610612736))))) + (app0_primary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app0_primary_var_resultant_addr' value='`${toHex(app0_primary_var_base_addr + app0_manual_primary_offset)}`' />
     <Variable id='app0_primary_var_erase_val' value='`${app0_primary_devtype eq "INTERNAL_RRAM" || app0_primary_memid eq "SRAM" || app0_primary_memid eq "CM55_ITCM_INTERNAL" || app0_primary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
     <Variable id='app1_primary_cmse_attr' value='`${app1_secure_access ? "SECURE" : "NON_SECURE"}`' />
     <Variable id='app1_primary_memid' value='`${app1_manual_primary_memory}`' />
     <Variable id='app1_primary_devtype' value='`${app1_primary_memid eq "SMIF0MEM0" || app1_primary_memid eq "SMIF0MEM1" || app1_primary_memid eq "SMIF0MEM2" || app1_primary_memid eq "SMIF0MEM3" || app1_primary_memid eq "SMIF1MEM0" || app1_primary_memid eq "SMIF1MEM1" || app1_primary_memid eq "SMIF1MEM2" || app1_primary_memid eq "SMIF1MEM3" ? (app1_primary_cmse_attr eq "SECURE" ? "EXTERNAL_S_FLASH" : "EXTERNAL_NS_FLASH") : (app1_primary_memid eq "RRAM" ? "INTERNAL_RRAM" : "ERROR")}`' />
@@ -1768,7 +1983,7 @@
     <Variable id='app1_primary_var_base_addr' value='`${(app1_primary_memid eq "RRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", rram_memory_view_maps ne "" ? splitAt(rram_memory_view_maps, 0) : "", "RRAM", 0) : (app1_primary_memid eq "SRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", sram_memory_view_maps ne "" ? splitAt(sram_memory_view_maps, 0) : "", "SRAM", 0) : (app1_primary_memid eq "CM55_ITCM_INTERNAL" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S"), 0) : "", "CM55_ITCM_INTERNAL", 0) : (app1_primary_memid eq "SOCMEM_RAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S"), 0) : "", "SOCMEM_RAM", 0) : (first_smif_memory ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", first_smif_memory_view_maps ne "" ? splitAt(first_smif_memory_view_maps, 0) : "", first_smif_memory, 0) : 1610612736))))) + (app1_primary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app1_primary_var_resultant_addr' value='`${toHex(app1_primary_var_base_addr + app1_manual_primary_offset)}`' />
     <Variable id='app1_primary_var_erase_val' value='`${app1_primary_devtype eq "INTERNAL_RRAM" || app1_primary_memid eq "SRAM" || app1_primary_memid eq "CM55_ITCM_INTERNAL" || app1_primary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
     <Variable id='app2_primary_cmse_attr' value='`${app2_secure_access ? "SECURE" : "NON_SECURE"}`' />
     <Variable id='app2_primary_memid' value='`${app2_manual_primary_memory}`' />
     <Variable id='app2_primary_devtype' value='`${app2_primary_memid eq "SMIF0MEM0" || app2_primary_memid eq "SMIF0MEM1" || app2_primary_memid eq "SMIF0MEM2" || app2_primary_memid eq "SMIF0MEM3" || app2_primary_memid eq "SMIF1MEM0" || app2_primary_memid eq "SMIF1MEM1" || app2_primary_memid eq "SMIF1MEM2" || app2_primary_memid eq "SMIF1MEM3" ? (app2_primary_cmse_attr eq "SECURE" ? "EXTERNAL_S_FLASH" : "EXTERNAL_NS_FLASH") : (app2_primary_memid eq "RRAM" ? "INTERNAL_RRAM" : "ERROR")}`' />
@@ -1777,7 +1992,7 @@
     <Variable id='app2_primary_var_base_addr' value='`${(app2_primary_memid eq "RRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", rram_memory_view_maps ne "" ? splitAt(rram_memory_view_maps, 0) : "", "RRAM", 0) : (app2_primary_memid eq "SRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", sram_memory_view_maps ne "" ? splitAt(sram_memory_view_maps, 0) : "", "SRAM", 0) : (app2_primary_memid eq "CM55_ITCM_INTERNAL" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S"), 0) : "", "CM55_ITCM_INTERNAL", 0) : (app2_primary_memid eq "SOCMEM_RAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S"), 0) : "", "SOCMEM_RAM", 0) : (first_smif_memory ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", first_smif_memory_view_maps ne "" ? splitAt(first_smif_memory_view_maps, 0) : "", first_smif_memory, 0) : 1610612736))))) + (app2_primary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app2_primary_var_resultant_addr' value='`${toHex(app2_primary_var_base_addr + app2_manual_primary_offset)}`' />
     <Variable id='app2_primary_var_erase_val' value='`${app2_primary_devtype eq "INTERNAL_RRAM" || app2_primary_memid eq "SRAM" || app2_primary_memid eq "CM55_ITCM_INTERNAL" || app2_primary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
     <Variable id='app3_primary_cmse_attr' value='`${app3_secure_access ? "SECURE" : "NON_SECURE"}`' />
     <Variable id='app3_primary_memid' value='`${app3_manual_primary_memory}`' />
     <Variable id='app3_primary_devtype' value='`${app3_primary_memid eq "SMIF0MEM0" || app3_primary_memid eq "SMIF0MEM1" || app3_primary_memid eq "SMIF0MEM2" || app3_primary_memid eq "SMIF0MEM3" || app3_primary_memid eq "SMIF1MEM0" || app3_primary_memid eq "SMIF1MEM1" || app3_primary_memid eq "SMIF1MEM2" || app3_primary_memid eq "SMIF1MEM3" ? (app3_primary_cmse_attr eq "SECURE" ? "EXTERNAL_S_FLASH" : "EXTERNAL_NS_FLASH") : (app3_primary_memid eq "RRAM" ? "INTERNAL_RRAM" : "ERROR")}`' />
@@ -1786,7 +2001,7 @@
     <Variable id='app3_primary_var_base_addr' value='`${(app3_primary_memid eq "RRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", rram_memory_view_maps ne "" ? splitAt(rram_memory_view_maps, 0) : "", "RRAM", 0) : (app3_primary_memid eq "SRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", sram_memory_view_maps ne "" ? splitAt(sram_memory_view_maps, 0) : "", "SRAM", 0) : (app3_primary_memid eq "CM55_ITCM_INTERNAL" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S"), 0) : "", "CM55_ITCM_INTERNAL", 0) : (app3_primary_memid eq "SOCMEM_RAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S"), 0) : "", "SOCMEM_RAM", 0) : (first_smif_memory ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", first_smif_memory_view_maps ne "" ? splitAt(first_smif_memory_view_maps, 0) : "", first_smif_memory, 0) : 1610612736))))) + (app3_primary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app3_primary_var_resultant_addr' value='`${toHex(app3_primary_var_base_addr + app3_manual_primary_offset)}`' />
     <Variable id='app3_primary_var_erase_val' value='`${app3_primary_devtype eq "INTERNAL_RRAM" || app3_primary_memid eq "SRAM" || app3_primary_memid eq "CM55_ITCM_INTERNAL" || app3_primary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
     <Variable id='app4_primary_cmse_attr' value='`${app4_secure_access ? "SECURE" : "NON_SECURE"}`' />
     <Variable id='app4_primary_memid' value='`${app4_manual_primary_memory}`' />
     <Variable id='app4_primary_devtype' value='`${app4_primary_memid eq "SMIF0MEM0" || app4_primary_memid eq "SMIF0MEM1" || app4_primary_memid eq "SMIF0MEM2" || app4_primary_memid eq "SMIF0MEM3" || app4_primary_memid eq "SMIF1MEM0" || app4_primary_memid eq "SMIF1MEM1" || app4_primary_memid eq "SMIF1MEM2" || app4_primary_memid eq "SMIF1MEM3" ? (app4_primary_cmse_attr eq "SECURE" ? "EXTERNAL_S_FLASH" : "EXTERNAL_NS_FLASH") : (app4_primary_memid eq "RRAM" ? "INTERNAL_RRAM" : "ERROR")}`' />
@@ -1795,7 +2010,7 @@
     <Variable id='app4_primary_var_base_addr' value='`${(app4_primary_memid eq "RRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", rram_memory_view_maps ne "" ? splitAt(rram_memory_view_maps, 0) : "", "RRAM", 0) : (app4_primary_memid eq "SRAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", sram_memory_view_maps ne "" ? splitAt(sram_memory_view_maps, 0) : "", "SRAM", 0) : (app4_primary_memid eq "CM55_ITCM_INTERNAL" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("CM55_ITCM_INTERNAL", "CORE_NAME_CM33_0_S"), 0) : "", "CM55_ITCM_INTERNAL", 0) : (app4_primary_memid eq "SOCMEM_RAM" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S") ne "" ? splitAt(memoryViewMaps("SOCMEM_RAM", "CORE_NAME_CM33_0_S"), 0) : "", "SOCMEM_RAM", 0) : (first_smif_memory ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", first_smif_memory_view_maps ne "" ? splitAt(first_smif_memory_view_maps, 0) : "", first_smif_memory, 0) : 1610612736))))) + (app4_primary_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='app4_primary_var_resultant_addr' value='`${toHex(app4_primary_var_base_addr + app4_manual_primary_offset)}`' />
     <Variable id='app4_primary_var_erase_val' value='`${app4_primary_devtype eq "INTERNAL_RRAM" || app4_primary_memid eq "SRAM" || app4_primary_memid eq "CM55_ITCM_INTERNAL" || app4_primary_memid eq "SOCMEM_RAM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
     <!-- Bootloader Variables -->
     <Variable id='bootloader_memory_region_location' value='`${bootloader_nvm_its_MEMORY_PLACED eq true ? findMemoryRegionByGuid("7F3E9B2A-5C8D-4E1F-9A6B-3D7C2E8F1A4B") : ""}`' />
     <Variable id='bootloader_region_ref' value='`${bootloader_nvm_its_MEMORY_PLACED eq true ? getExposedMember(bootloader_memory_region_location, "regionId") : ""}`' />
@@ -1809,7 +2024,20 @@
     <Variable id='bootloader_var_base_addr' value='`${bootloader_base_address_dynamic + (bootloader_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='bootloader_var_resultant_addr' value='`${bootloader_var_offset ne "" ? toHex(bootloader_var_base_addr + bootloader_var_offset) : ""}`' />
     <Variable id='bootloader_var_erase_val' value='`${bootloader_var_devtype eq "INTERNAL_RRAM" || bootloader_var_devtype eq "INTERNAL_S_SRAM" || bootloader_var_devtype eq "INTERNAL_NS_SRAM" || bootloader_var_devtype eq "INTERNAL_S_ITCM" || bootloader_var_devtype eq "INTERNAL_S_SOCMEM" ? toHex($ERASE_VAL_INTERNAL_MEMORIES) : toHex($ERASE_VAL_EXTERNAL_FLASH)}`' />
-    
+
+    <!-- Bootloader SRAM Code Region Variables -->
+    <Variable id='bootloader_sram_code_memory_region_location' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? findMemoryRegionByGuid("E1B8F5A3-9C4D-4F2E-7A6B-8D3C5E9F2A7B") : ""}`' />
+    <Variable id='bootloader_sram_code_region_ref' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? getExposedMember(bootloader_sram_code_memory_region_location, "regionId") : ""}`' />
+    <Variable id='bootloader_sram_code_domain_ref' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? getExposedMember(bootloader_sram_code_memory_region_location, "domain") : ""}`' />
+    <Variable id='bootloader_sram_code_cmse_attr' value='`${bootloader_sram_code_domain_ref ne "" ? getExposedMember(getBlockFromInstance(bootloader_sram_code_domain_ref), "cmseAttribute") : "NON_SECURE"}`' />
+    <Variable id='bootloader_sram_code_memid' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? getExposedMember(bootloader_sram_code_memory_region_location, "memoryId") : "SRAM"}`' />
+    <Variable id='bootloader_sram_code_var_offset' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? getExposedMember(bootloader_sram_code_memory_region_location, "offset") : 0}`' />
+    <Variable id='bootloader_sram_code_var_size' value='`${bootloader_sram_code_region_MEMORY_PLACED eq true ? getExposedMember(bootloader_sram_code_memory_region_location, "size") : 0}`' />
+    <Variable id='bootloader_sram_code_memory_view_maps' value='`${bootloader_sram_code_memid ne "" ? memoryViewMaps(bootloader_sram_code_memid, "CORE_NAME_CM33_0_S") : ""}`' />
+    <Variable id='bootloader_sram_code_base_address_dynamic' value='`${toHex(memoryOffsetToAddress("CORE_NAME_CM33_0_S", bootloader_sram_code_memory_view_maps ne "" ? splitAt(bootloader_sram_code_memory_view_maps, 0) : "", bootloader_sram_code_memid, 0))}`' />
+    <Variable id='bootloader_sram_code_var_base_addr' value='`${bootloader_sram_code_base_address_dynamic + (bootloader_sram_code_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
+    <Variable id='bootloader_sram_code_var_resultant_addr' value='`${bootloader_sram_code_var_offset ne "" ? toHex(bootloader_sram_code_var_base_addr + bootloader_sram_code_var_offset) : ""}`' />
+
     <!-- Scratch Region Variables -->
     <Variable id='scratch_var_region_ref' value='`${scratch_region}`' />
     <Variable id='scratch_var_domain_ref' value='`${scratch_region ne "" ? getExposedMember(getBlockFromInstance(scratch_region), "domain") : ""}`' />
@@ -1820,7 +2048,7 @@
     <Variable id='scratch_var_size' value='`${getExposedMember(getBlockFromInstance(scratch_region), "size")}`' />
     <Variable id='scratch_var_base_addr' value='`${scratch_base_address_dynamic + (scratch_var_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='scratch_var_resultant_addr' value='`${scratch_var_offset ne "" ? toHex(scratch_var_base_addr + scratch_var_offset) : ""}`' />
-    
+
     <!-- Swap Status Region Variables -->
     <Variable id='swap_status_var_region_ref' value='`${swap_status_region}`' />
     <Variable id='swap_status_var_domain_ref' value='`${swap_status_region ne "" ? getExposedMember(getBlockFromInstance(swap_status_region), "domain") : ""}`' />
@@ -1832,59 +2060,96 @@
     <Variable id='swap_status_var_base_addr' value='`${swap_status_base_address_dynamic + (swap_status_var_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
     <Variable id='swap_status_var_resultant_addr' value='`${swap_status_var_offset ne "" ? toHex(swap_status_var_base_addr + swap_status_var_offset) : ""}`' />
 
+    <!-- KEK Region Variables -->
+    <Variable id='kek_memory_region_location' value='`${kek_region_MEMORY_PLACED eq true ? findMemoryRegionByGuid("8A4F5C3E-6D9B-4A1E-5F8C-7A2D9E4B6F3A") : ""}`' />
+    <Variable id='kek_region_ref' value='`${kek_region_MEMORY_PLACED eq true ? getExposedMember(kek_memory_region_location, "regionId") : ""}`' />
+    <Variable id='kek_region_instance' value='`${kek_region_MEMORY_PLACED eq true ? getParamValue("reserved_memory_region_kek", "location") : ""}`' />
+    <Variable id='kek_domain_ref' value='`${kek_region_MEMORY_PLACED eq true ? getExposedMember(kek_memory_region_location, "domain") : ""}`' />
+    <Variable id='kek_cmse_attr' value='`${kek_domain_ref ne "" ? getExposedMember(getBlockFromInstance(kek_domain_ref), "cmseAttribute") : "NON_SECURE"}`' />
+    <Variable id='kek_memid' value='`${kek_region_MEMORY_PLACED eq true ? getExposedMember(kek_memory_region_location, "memoryId") : "RRAM"}`' />
+    <Variable id='kek_var_devtype' value='`${kek_memid eq "RRAM" ? "INTERNAL_RRAM" : (kek_memid eq "SMIF0MEM0" || kek_memid eq "SMIF0MEM1" || kek_memid eq "SMIF0MEM2" || kek_memid eq "SMIF0MEM3" || kek_memid eq "SMIF1MEM0" || kek_memid eq "SMIF1MEM1" || kek_memid eq "SMIF1MEM2" || kek_memid eq "SMIF1MEM3" ? "EXTERNAL_S_FLASH" : kek_memid)}`' />
+    <Variable id='kek_var_offset' value='`${getExposedMember(kek_memory_region_location, "offset")}`' />
+    <Variable id='kek_var_size' value='`${getExposedMember(kek_memory_region_location, "size")}`' />
+    <Variable id='kek_var_base_addr' value='`${kek_base_address_dynamic + (kek_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
+    <Variable id='kek_var_resultant_addr' value='`${kek_var_offset ne "" ? toHex(kek_var_base_addr + kek_var_offset) : ""}`' />
+
+    <!-- Key Encryption Key Address Variable -->
+    <Variable id='key_encryption_key_address' value='`${kek_var_resultant_addr}`' />
+
+    <!-- SE RAM App Staging Storage Region Variables -->
+    <Variable id='se_ram_app_memory_region_location' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getBlockFromInstance(se_ram_app_staging_region) : ""}`' />
+    <Variable id='se_ram_app_region_ref' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getExposedMember(se_ram_app_memory_region_location, "regionId") : ""}`' />
+    <Variable id='se_ram_app_domain_ref' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getExposedMember(se_ram_app_memory_region_location, "domain") : ""}`' />
+    <Variable id='se_ram_app_cmse_attr' value='`${se_ram_app_domain_ref ne "" ? getExposedMember(getBlockFromInstance(se_ram_app_domain_ref), "cmseAttribute") : "NON_SECURE"}`' />
+    <Variable id='se_ram_app_memid' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getExposedMember(se_ram_app_memory_region_location, "memoryId") : ""}`' />
+    <Variable id='se_ram_app_var_devtype' value='`${se_ram_app_memid eq "RRAM" ? "INTERNAL_RRAM" : (se_ram_app_memid eq "SRAM" ? "INTERNAL_S_SRAM" : (se_ram_app_memid eq "CM55_ITCM_INTERNAL" ? "INTERNAL_S_ITCM" : (se_ram_app_memid eq "SOCMEM_RAM" ? "INTERNAL_S_SOCMEM" : (se_ram_app_memid eq "SMIF0MEM0" || se_ram_app_memid eq "SMIF0MEM1" || se_ram_app_memid eq "SMIF0MEM2" || se_ram_app_memid eq "SMIF0MEM3" || se_ram_app_memid eq "SMIF1MEM0" || se_ram_app_memid eq "SMIF1MEM1" || se_ram_app_memid eq "SMIF1MEM2" || se_ram_app_memid eq "SMIF1MEM3" ? "EXTERNAL_S_FLASH" : se_ram_app_memid))))}`' />
+    <Variable id='se_ram_app_var_offset' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getExposedMember(se_ram_app_memory_region_location, "offset") : ""}`' />
+    <Variable id='se_ram_app_var_size' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region ne "" ? getExposedMember(se_ram_app_memory_region_location, "size") : ""}`' />
+
+    <!-- SE RAM App Memory View Maps and Base Address -->
+    <Variable id='se_ram_app_memory_view_maps' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_memid ne "" ? memoryViewMaps(se_ram_app_memid, "CORE_NAME_CM33_0_S") : ""}`' />
+    <Variable id='se_ram_app_base_address_dynamic' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_memid ne "" ? memoryOffsetToAddress("CORE_NAME_CM33_0_S", se_ram_app_memory_view_maps ne "" ? splitAt(se_ram_app_memory_view_maps, 0) : "", se_ram_app_memid, 0) : 0}`' />
+    <Variable id='se_ram_app_var_base_addr' value='`${se_ram_app_base_address_dynamic + (se_ram_app_cmse_attr eq "SECURE" ? 268435456 : 0)}`' />
+    <Variable id='se_ram_app_var_resultant_addr' value='`${stage_se_ram_app eq true &amp;&amp; se_ram_app_var_offset ne "" ? toHex(se_ram_app_var_base_addr + se_ram_app_var_offset) : ""}`' />
+
   </Variables>
 
   <DRCs>
-    <!-- Application 0 DRCs -->
-    <DRC type="INFO" text="Application 0: Secondary slot size (`${app0_secondary_var_size}`) is larger than primary slot size (`${app0_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${app0_secondary_region ne &quot;&quot; &amp;&amp; app0_secondary_var_size &gt; app0_primary_var_size}`" />
-    <DRC type="ERROR" text="Application 0: Primary slot size (`${app0_primary_var_size}`) is larger than secondary slot size (`${app0_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${app0_secondary_region ne &quot;&quot; &amp;&amp; app0_primary_var_size &gt; app0_secondary_var_size}`" />
-    <DRC type="ERROR" text="Application 0: Selected secondary slot region is not supported. Please select a different memory region." condition="`${app0_secondary_devtype eq &quot;ERROR&quot;}`" />
-    <DRC type="ERROR" text="Application 0: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${app0_primary_devtype eq &quot;ERROR&quot;}`" />
-    
-    <!-- Application 1 DRCs -->
-    <DRC type="INFO" text="Application 1: Secondary slot size (`${app1_secondary_var_size}`) is larger than primary slot size (`${app1_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region ne &quot;&quot; &amp;&amp; app1_secondary_var_size &gt; app1_primary_var_size}`" />
-    <DRC type="ERROR" text="Application 1: Primary slot size (`${app1_primary_var_size}`) is larger than secondary slot size (`${app1_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region ne &quot;&quot; &amp;&amp; app1_primary_var_size &gt; app1_secondary_var_size}`" />
-    <DRC type="ERROR" text="Application 1: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_devtype eq &quot;ERROR&quot;}`" />
-    <DRC type="ERROR" text="Application 1: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(1 &lt; image_count) &amp;&amp; app1_primary_devtype eq &quot;ERROR&quot;}`" />
-    
-    <!-- Application 2 DRCs -->
-    <DRC type="INFO" text="Application 2: Secondary slot size (`${app2_secondary_var_size}`) is larger than primary slot size (`${app2_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region ne &quot;&quot; &amp;&amp; app2_secondary_var_size &gt; app2_primary_var_size}`" />
-    <DRC type="ERROR" text="Application 2: Primary slot size (`${app2_primary_var_size}`) is larger than secondary slot size (`${app2_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region ne &quot;&quot; &amp;&amp; app2_primary_var_size &gt; app2_secondary_var_size}`" />
-    <DRC type="ERROR" text="Application 2: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_devtype eq &quot;ERROR&quot;}`" />
-    <DRC type="ERROR" text="Application 2: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(2 &lt; image_count) &amp;&amp; app2_primary_devtype eq &quot;ERROR&quot;}`" />
-    
-    <!-- Application 3 DRCs -->
-    <DRC type="INFO" text="Application 3: Secondary slot size (`${app3_secondary_var_size}`) is larger than primary slot size (`${app3_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region ne &quot;&quot; &amp;&amp; app3_secondary_var_size &gt; app3_primary_var_size}`" />
-    <DRC type="ERROR" text="Application 3: Primary slot size (`${app3_primary_var_size}`) is larger than secondary slot size (`${app3_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region ne &quot;&quot; &amp;&amp; app3_primary_var_size &gt; app3_secondary_var_size}`" />
-    <DRC type="ERROR" text="Application 3: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_devtype eq &quot;ERROR&quot;}`" />
-    <DRC type="ERROR" text="Application 3: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(3 &lt; image_count) &amp;&amp; app3_primary_devtype eq &quot;ERROR&quot;}`" />
-    
-    <!-- Application 4 DRCs -->
-    <DRC type="INFO" text="Application 4: Secondary slot size (`${app4_secondary_var_size}`) is larger than primary slot size (`${app4_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region ne &quot;&quot; &amp;&amp; app4_secondary_var_size &gt; app4_primary_var_size}`" />
-    <DRC type="ERROR" text="Application 4: Primary slot size (`${app4_primary_var_size}`) is larger than secondary slot size (`${app4_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region ne &quot;&quot; &amp;&amp; app4_primary_var_size &gt; app4_secondary_var_size}`" />
-    <DRC type="ERROR" text="Application 4: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_devtype eq &quot;ERROR&quot;}`" />
-    <DRC type="ERROR" text="Application 4: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(4 &lt; image_count) &amp;&amp; app4_primary_devtype eq &quot;ERROR&quot;}`" />
+    <!-- Project 0 DRCs -->
+    <DRC type="INFO" text="Project 0: Secondary slot size (`${app0_secondary_var_size}`) is larger than primary slot size (`${app0_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${app0_secondary_region ne &quot;&quot; &amp;&amp; app0_secondary_var_size &gt; app0_primary_var_size}`" />
+    <DRC type="ERROR" text="Project 0: Primary slot size (`${app0_primary_var_size}`) is larger than secondary slot size (`${app0_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${app0_secondary_region ne &quot;&quot; &amp;&amp; app0_primary_var_size &gt; app0_secondary_var_size}`" />
+    <DRC type="ERROR" text="Project 0: Selected secondary slot region is not supported. Please select a different memory region." condition="`${app0_secondary_devtype eq &quot;ERROR&quot;}`" />
+    <DRC type="ERROR" text="Project 0: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${app0_primary_devtype eq &quot;ERROR&quot;}`" />
+
+    <!-- Project 1 DRCs -->
+    <DRC type="INFO" text="Project 1: Secondary slot size (`${app1_secondary_var_size}`) is larger than primary slot size (`${app1_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region ne &quot;&quot; &amp;&amp; app1_secondary_var_size &gt; app1_primary_var_size}`" />
+    <DRC type="ERROR" text="Project 1: Primary slot size (`${app1_primary_var_size}`) is larger than secondary slot size (`${app1_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region ne &quot;&quot; &amp;&amp; app1_primary_var_size &gt; app1_secondary_var_size}`" />
+    <DRC type="ERROR" text="Project 1: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_devtype eq &quot;ERROR&quot;}`" />
+    <DRC type="ERROR" text="Project 1: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(1 &lt; image_count) &amp;&amp; app1_primary_devtype eq &quot;ERROR&quot;}`" />
+
+    <!-- Project 2 DRCs -->
+    <DRC type="INFO" text="Project 2: Secondary slot size (`${app2_secondary_var_size}`) is larger than primary slot size (`${app2_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region ne &quot;&quot; &amp;&amp; app2_secondary_var_size &gt; app2_primary_var_size}`" />
+    <DRC type="ERROR" text="Project 2: Primary slot size (`${app2_primary_var_size}`) is larger than secondary slot size (`${app2_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region ne &quot;&quot; &amp;&amp; app2_primary_var_size &gt; app2_secondary_var_size}`" />
+    <DRC type="ERROR" text="Project 2: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_devtype eq &quot;ERROR&quot;}`" />
+    <DRC type="ERROR" text="Project 2: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(2 &lt; image_count) &amp;&amp; app2_primary_devtype eq &quot;ERROR&quot;}`" />
+
+    <!-- Project 3 DRCs -->
+    <DRC type="INFO" text="Project 3: Secondary slot size (`${app3_secondary_var_size}`) is larger than primary slot size (`${app3_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region ne &quot;&quot; &amp;&amp; app3_secondary_var_size &gt; app3_primary_var_size}`" />
+    <DRC type="ERROR" text="Project 3: Primary slot size (`${app3_primary_var_size}`) is larger than secondary slot size (`${app3_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region ne &quot;&quot; &amp;&amp; app3_primary_var_size &gt; app3_secondary_var_size}`" />
+    <DRC type="ERROR" text="Project 3: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_devtype eq &quot;ERROR&quot;}`" />
+    <DRC type="ERROR" text="Project 3: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(3 &lt; image_count) &amp;&amp; app3_primary_devtype eq &quot;ERROR&quot;}`" />
+
+    <!-- Project 4 DRCs -->
+    <DRC type="INFO" text="Project 4: Secondary slot size (`${app4_secondary_var_size}`) is larger than primary slot size (`${app4_primary_var_size}`). Secondary slot size will be reduced to match primary slot size." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region ne &quot;&quot; &amp;&amp; app4_secondary_var_size &gt; app4_primary_var_size}`" />
+    <DRC type="ERROR" text="Project 4: Primary slot size (`${app4_primary_var_size}`) is larger than secondary slot size (`${app4_secondary_var_size}`). Upgrade slot size is insufficient." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region ne &quot;&quot; &amp;&amp; app4_primary_var_size &gt; app4_secondary_var_size}`" />
+    <DRC type="ERROR" text="Project 4: Selected secondary slot region is not supported. Please select a different memory region." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_devtype eq &quot;ERROR&quot;}`" />
+    <DRC type="ERROR" text="Project 4: Selected primary slot memory type is not supported. Please select a different memory type." condition="`${(4 &lt; image_count) &amp;&amp; app4_primary_devtype eq &quot;ERROR&quot;}`" />
 
     <!-- Region Selection DRCs -->
-    <DRC type="WARNING" text="Measured boot is enabled but no MCUBoot shared data region is selected. Please select a memory region." condition="`${measured_boot eq true &amp;&amp; measured_boot_record_region eq &quot;&quot;}`" />
-    
-    <!-- Application RAM Load Region DRCs -->
-    <DRC type="WARNING" text="Application 0: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${app0_ram_load eq true &amp;&amp; app0_ram_load_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 1: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(1 &lt; image_count) &amp;&amp; app1_ram_load eq true &amp;&amp; app1_ram_load_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 2: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(2 &lt; image_count) &amp;&amp; app2_ram_load eq true &amp;&amp; app2_ram_load_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 3: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(3 &lt; image_count) &amp;&amp; app3_ram_load eq true &amp;&amp; app3_ram_load_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 4: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(4 &lt; image_count) &amp;&amp; app4_ram_load eq true &amp;&amp; app4_ram_load_region eq &quot;&quot;}`" />
+    <DRC type="ERROR" text="Measured boot is enabled but no MCUBoot shared data region is selected. Please select a memory region." condition="`${measured_boot eq true &amp;&amp; measured_boot_record_region eq &quot;&quot;}`" />
+    <DRC type="ERROR" text="SE RAM App staging is enabled but no storage region is selected. Please select a memory storage region for SE RAM App staging area." condition="`${stage_se_ram_app eq true &amp;&amp; se_ram_app_staging_region eq &quot;&quot;}`" />
+
+    <!-- Project RAM Load Region DRCs -->
+    <DRC type="WARNING" text="Project 0: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${app0_ram_load eq true &amp;&amp; app0_ram_load_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 1: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(1 &lt; image_count) &amp;&amp; app1_ram_load eq true &amp;&amp; app1_ram_load_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 2: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(2 &lt; image_count) &amp;&amp; app2_ram_load eq true &amp;&amp; app2_ram_load_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 3: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(3 &lt; image_count) &amp;&amp; app3_ram_load eq true &amp;&amp; app3_ram_load_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 4: RAM load is enabled but no RAM load region is selected. Please select a memory region." condition="`${(4 &lt; image_count) &amp;&amp; app4_ram_load eq true &amp;&amp; app4_ram_load_region eq &quot;&quot;}`" />
 
     <!-- Swap Mode Region DRCs -->
     <DRC type="WARNING" text="Swap upgrade mode is enabled but no swap status region is selected. Please select a memory region for swap status." condition="`${upgrade_mode eq &quot;swap&quot; &amp;&amp; swap_status_region eq &quot;&quot;}`" />
     <DRC type="WARNING" text="Swap upgrade mode is enabled but no scratch region is selected. Please select a memory region for scratch area." condition="`${upgrade_mode eq &quot;swap&quot; &amp;&amp; scratch_region eq &quot;&quot;}`" />
+    <DRC type="ERROR" text="Swap status region must be located in RRAM. Please, move this region to RRAM." condition="`${upgrade_mode eq &quot;swap&quot; &amp;&amp; swap_status_var_memid ne &quot;RRAM&quot;}`" />
 
     <!-- Secondary Slot Region DRCs -->
-    <DRC type="WARNING" text="Application 0: No secondary slot region is selected. Firmware upgrade functionality will not be available for this application." condition="`${app0_secondary_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 1: No secondary slot region is selected. Firmware upgrade functionality will not be available for this application." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 2: No secondary slot region is selected. Firmware upgrade functionality will not be available for this application." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 3: No secondary slot region is selected. Firmware upgrade functionality will not be available for this application." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region eq &quot;&quot;}`" />
-    <DRC type="WARNING" text="Application 4: No secondary slot region is selected. Firmware upgrade functionality will not be available for this application." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 0: No secondary slot region is selected. Firmware upgrade functionality will not be available for this project." condition="`${app0_secondary_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 1: No secondary slot region is selected. Firmware upgrade functionality will not be available for this project." condition="`${(1 &lt; image_count) &amp;&amp; app1_secondary_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 2: No secondary slot region is selected. Firmware upgrade functionality will not be available for this project." condition="`${(2 &lt; image_count) &amp;&amp; app2_secondary_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 3: No secondary slot region is selected. Firmware upgrade functionality will not be available for this project." condition="`${(3 &lt; image_count) &amp;&amp; app3_secondary_region eq &quot;&quot;}`" />
+    <DRC type="WARNING" text="Project 4: No secondary slot region is selected. Firmware upgrade functionality will not be available for this project." condition="`${(4 &lt; image_count) &amp;&amp; app4_secondary_region eq &quot;&quot;}`" />
+
+    <!-- Bootloader SRAM Code Region  -->
+    <DRC type="WARNING" text="Bootloader SRAM Code Region has to have at least 0x8000 ofset from the start" condition="`${(bootloader_sram_code_var_offset &lt; 0x8000) &amp;&amp; bootloader_sram_code_region_MEMORY_PLACED}`" />
   </DRCs>
 
   <ConfigFirmware>
@@ -1931,6 +2196,7 @@
       <Line value="	FLASH_AREA_IMG_5_SECONDARY = 11U," />
       <Line value="	FLASH_AREA_IMAGE_SWAP_STATUS = 12U," />
       <Line value="	FLASH_AREA_IMAGE_SCRATCH = 13U," />
+      <Line value="	RAM_APP_STAGING_AREA_ID = 14U," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
       <Line value="};" />
       <Line value="" />
       <Line value="typedef enum " />
@@ -2038,6 +2304,13 @@
       <Line value="		.fa_off       = `${scratch_var_offset}`," include="`${upgrade_mode eq &quot;swap&quot;}`" />
       <Line value="		.fa_size      = `${scratch_var_size}`," include="`${upgrade_mode eq &quot;swap&quot;}`" />
       <Line value="	}," include="`${upgrade_mode eq &quot;swap&quot;}`" />
+      <!-- SE RAM App staging flash area -->
+      <Line value="	{" include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
+      <Line value="		.fa_id        = RAM_APP_STAGING_AREA_ID," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
+      <Line value="		.fa_device_id = `${se_ram_app_var_devtype}`," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
+      <Line value="		.fa_off       = `${se_ram_app_var_offset}`," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
+      <Line value="		.fa_size      = `${se_ram_app_var_size}`," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
+      <Line value="	}," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
       <Line value="};" />
       <Line value="" />
       <Line value="struct flash_area *boot_area_descs[] =" />
@@ -2049,6 +2322,7 @@
       </Repeat>
       <Line value="	&amp;flash_areas[`${image_count * 2 +1}`U]," include="`${upgrade_mode eq &quot;swap&quot;}`" />
       <Line value="	&amp;flash_areas[`${image_count * 2 + 2}`U]," include="`${upgrade_mode eq &quot;swap&quot;}`" />
+      <Line value="	&amp;flash_areas[`${upgrade_mode eq &quot;swap&quot; ? image_count * 2 + 3 : image_count * 2 + 1}`U]," include="`${stage_se_ram_app &amp;&amp; se_ram_app_staging_region ne &quot;&quot;}`" />
       <Line value="	NULL" />
       <Line value="};" />
       <Line value="" />
@@ -2088,7 +2362,7 @@
 
       <!-- Variable definitions for security configuration -->
       <Line value="/* Security Configuration Variables */" />
-      
+
       <Line value="/* MCUBoot Upgrade Strategy Configuration */" />
       <!-- Upgrade Mode Configuration -->
       <Line value="#define MCUBOOT_OVERWRITE_ONLY (1)" include="`${upgrade_mode eq &quot;overwrite&quot;}`" />
@@ -2265,8 +2539,9 @@
       <!-- SE RAM App staging configuration -->
       <Line value="" />
       <Line value="/* SE RAM App Staging Configuration */" />
-      <Line value="#define RAM_APP_STAGING_ADDR (`${se_ram_app_staging_address}`)" include="`${stage_se_ram_app}`" />
-      <Line value="#define RAM_APP_STAGING_SIZE (`${se_ram_app_staging_size}`)" include="`${stage_se_ram_app}`" />
+      <Line value="#define STAGE_RAM_APPS" include="`${stage_se_ram_app}`" />
+      <Line value="#define RAM_APP_STAGING_ADDR (`${se_ram_app_var_resultant_addr}`)" include="`${stage_se_ram_app &amp;&amp; se_ram_app_var_resultant_addr ne &quot;&quot;}`" />
+      <Line value="#define RAM_APP_STAGING_RAM_ADDR (`${se_ram_app_staging_ram_address}`)" include="`${stage_se_ram_app}`" />
 
       <!-- Image encryption configuration -->
       <Line value="" />
@@ -2277,7 +2552,7 @@
       <Line value="#define MCUBOOT_ENCRYPT_EC256" include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`' />
       <Line value="#define MCUBOOT_ENC_IMAGES_XIP" include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`' />
       <Line value="#define MCUBOOT_USE_PSA_CRYPTO" include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" || image_encryption eq "xip_multi_keys")}`' />
-      
+
       <!-- XIP encryption single key -->
       <Line value="#define MCUBOOT_ENC_IMAGES_XIP_MULTI" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key"}`' />
 
@@ -2286,6 +2561,7 @@
 
       <!-- SE RT encryption -->
       <Line value="#define MCUBOOT_USE_ENC_IFX_SE" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption"}`' />
+      <Line value="#define MCUBOOT_ENCRYPT_EC256" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption"}`' />
 
       <!-- Platform Configuration -->
       <Line value="" />
@@ -2330,6 +2606,13 @@
       <Line value="COMPONENTS+=MCUBOOT_RNG" />
     </ConfigFile>
 
+    <!-- Generate bootloader_linker_config.mk -->
+    <ConfigFile name="bootloader_linker_config.mk">
+      <Line value="# Auto-generated bootloader_linker_config.mk file" />
+      <Line value="" />
+      <Line value="LINKER_TYPE=SRAM" include="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`"/>
+    </ConfigFile>
+
     <!-- SignerCombiner JSON Configuration Files -->
     <ConfigFile name="boot_with_bldr.json">
       <Line value="{" />
@@ -2355,6 +2638,7 @@
       <Line value="                            &quot;signing-key&quot; : &quot;`${bootloader_signature_priv_key_path}`&quot;," include='`${bootloader_signature_enable}`' />
       <Line value="                            &quot;security-counter&quot; : &quot;`${bootloader_hw_rollback_value}`&quot;," include='`${bootloader_signature_enable}`' />
       <Line value="                            &quot;min-erase-size&quot;: &quot;0x10&quot;," />
+      <Line value="                            &quot;load-address&quot; : &quot;`${bootloader_sram_code_var_resultant_addr}`&quot;," include="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;bootloader_sram_code_region_MEMORY_PLACED&quot;)}`" />
       <Line value="                            &quot;hex-address&quot; : &quot;`${bootloader_var_resultant_addr}`&quot;" />
       <Line value="                        }" />
       <Line value="                    ]," />
@@ -2397,20 +2681,41 @@
         <Line value="                            &quot;overwrite-only&quot; : true," include="`${upgrade_mode eq &quot;overwrite&quot; ? ($idx == 0 ? true : $idx &lt; image_count) : false }`" />
         <Line value="                            &quot;load-address&quot; : &quot;`${app$idx_ramload_address}`&quot;," include='`${app$idx_ram_load eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
         <Line value="                            &quot;signing-key&quot; : &quot;`${app$idx_signature_priv_key_path}`&quot;," include='`${validate_boot_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
-        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; } ]," include='`${validate_boot_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
+        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; } ]," include='`${validate_boot_slot eq true &amp;&amp; !(image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption") ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
+        <!-- SE RT encryption KEK ID and KDF -->
+        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; }, { &quot;tag&quot;: &quot;0x78&quot;, &quot;value&quot;: &quot;`${key_encryption_key_id}`&quot; } ]," include='`${validate_boot_slot eq true &amp;&amp; image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;kdf&quot; : &quot;KBKDFCMAC&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                            &quot;security-counter&quot; : &quot;`${app$idx_hw_rollback_value}`&quot;," include='`${hw_rollback_protection eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
-        <Line value="                            &quot;encryption-public-key&quot; : &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
-        <Line value="                            &quot;encryption-secret-key&quot; : &quot;`${data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
-        <Line value="                            &quot;encryption-address&quot; : &quot;`${app$idx_primary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
+
+        <!-- Encryption parameters - conditional based on encryption mode -->
+        <!-- For XIP single key: only first image gets encryption during signing -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+        <Line value="                            &quot;encryption-address&quot;: &quot;`${app$idx_primary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+
+        <!-- For XIP multi keys: each image gets its own encryption key -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${app$idx_data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-address&quot;: &quot;`${app$idx_primary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+
+        <!-- For SE RT encryption: uses KEK public key and per-image AES key -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${app$idx_data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+
         <Line value="                            &quot;hex-address&quot; : &quot;`${app$idx_primary_var_resultant_addr}`&quot;" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        }" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    ]," include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    &quot;outputs&quot;:" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    [" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        {" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
-        <Line value="                            &quot;nonce-output&quot; : &quot;`${nonce_output_file_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
+        <!-- For XIP single key encryption and encryption is off -->
+        <Line value="                            &quot;nonce-output&quot; : &quot;`${nonce_output_file_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
         <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${(!image_encryption_enabled &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)) || (image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx eq 0))}`' />
         <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`_decr.hex&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx == 0 ? false : $idx &lt; image_count)}`' />
+        <!-- For XIP multi keys encryption -->
+        <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <!-- For SE RT encryption -->
+        <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                            &quot;format&quot;: &quot;ihex&quot;" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        }" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    ]" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
@@ -2424,7 +2729,7 @@
         <Line value="                        }" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx ne 0) ? false : ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                    ]" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx ne 0) ? false : ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                }" include='`${$idx == 0 ? true : $idx &lt; image_count}`' />
-       
+
         <!-- Encrypt the second, third, ... images for XIP encryption case with single AES key -->
         <!-- Convert already signed image to bin format -->
         <Line value="                ," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx == 0 ? false : $idx &lt; image_count)}`' />
@@ -2548,11 +2853,27 @@
         <Line value="                            &quot;overwrite-only&quot; : true," include="`${upgrade_mode eq &quot;overwrite&quot; ? ($idx == 0 ? true : $idx &lt; image_count) : false }`" />
         <Line value="                            &quot;load-address&quot; : &quot;`${app$idx_ramload_address}`&quot;," include='`${app$idx_ram_load eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
         <Line value="                            &quot;signing-key&quot; : &quot;`${app$idx_signature_priv_key_path}`&quot;," include='`${validate_upgrade_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
-        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; } ]," include='`${validate_upgrade_slot eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
+        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; } ]," include='`${validate_upgrade_slot eq true &amp;&amp; !(image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption") ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
+        <!-- SE RT encryption KEK ID and KDF -->
+        <Line value="                            &quot;protected-tlv&quot; : [ { &quot;tag&quot;: &quot;0x77&quot;, &quot;value&quot;: &quot;`${app$idx_signature_key_id}`&quot; }, { &quot;tag&quot;: &quot;0x78&quot;, &quot;value&quot;: &quot;`${key_encryption_key_id}`&quot; } ]," include='`${validate_upgrade_slot eq true &amp;&amp; image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;kdf&quot; : &quot;KBKDFCMAC&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                            &quot;security-counter&quot; : &quot;`${app$idx_hw_rollback_value}`&quot;," include='`${hw_rollback_protection eq true ? $idx == 0 ? true : $idx &lt; image_count : false}`' />
-        <Line value="                            &quot;encryption-public-key&quot; : &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
-        <Line value="                            &quot;encryption-secret-key&quot; : &quot;`${data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
-        <Line value="                            &quot;encryption-address&quot; : &quot;`${app$idx_secondary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
+
+        <!-- Encryption parameters - conditional based on encryption mode -->
+        <!-- For XIP single key: only first image gets encryption during signing -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+        <Line value="                            &quot;encryption-address&quot;: &quot;`${app$idx_secondary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
+
+        <!-- For XIP multi keys: each image gets its own encryption key -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${app$idx_data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-address&quot;: &quot;`${app$idx_primary_var_resultant_addr}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+
+        <!-- For SE RT encryption: uses KEK public key and per-image AES key -->
+        <Line value="                            &quot;encryption-public-key&quot;: &quot;`${key_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <Line value="                            &quot;encryption-secret-key&quot;: &quot;`${app$idx_data_encryption_key_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+
         <Line value="                            &quot;hex-address&quot; : &quot;`${app$idx_secondary_var_resultant_addr}`&quot;," include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                            &quot;pad&quot;: true" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        }" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
@@ -2560,9 +2881,14 @@
         <Line value="                    &quot;outputs&quot;:" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    [" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        {" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
-        <Line value="                            &quot;nonce-output&quot; : &quot;`${nonce_output_file_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx == 0)}`' />
+        <!-- For XIP single key encryption and encryption is off -->
+        <Line value="                            &quot;nonce-output&quot; : &quot;`${nonce_output_file_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; $idx == 0}`' />
         <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${(!image_encryption_enabled &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)) || (image_encryption_enabled &amp;&amp; (image_encryption eq "xip_single_key" &amp;&amp; $idx eq 0))}`' />
         <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`_decr.hex&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx == 0 ? false : $idx &lt; image_count)}`' />
+        <!-- For XIP multi keys encryption -->
+        <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_multi_keys" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
+        <!-- For SE RT encryption -->
+        <Line value="                            &quot;file&quot; : &quot;`${app$idx_output_hex_path}`&quot;," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "se_rt_encryption" &amp;&amp; ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                            &quot;format&quot;: &quot;ihex&quot;" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                        }" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
         <Line value="                    ]" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
@@ -2576,7 +2902,7 @@
         <Line value="                        }" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx ne 0) ? false : ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                    ]" include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx ne 0) ? false : ($idx == 0 ? true : $idx &lt; image_count)}`' />
         <Line value="                }" include="`${$idx == 0 ? true : $idx &lt; image_count}`" />
-        
+
         <!-- Encrypt the second, third, ... images for XIP encryption case with single AES key -->
         <!-- Convert already signed image to bin format -->
         <Line value="                ," include='`${image_encryption_enabled &amp;&amp; image_encryption eq "xip_single_key" &amp;&amp; ($idx == 0 ? false : $idx &lt; image_count)}`' />
@@ -2715,14 +3041,26 @@
         <OperatingMode value="MCU" />
       </MappingRules>
     </FittingRules>
+  </PersonalityTemplate>
+
+  <!-- KEK memory region -->
+  <PersonalityTemplate id="reserved_memory_region_kek" valid="`${getParamValue(&quot;edgeprotect_bootloader_cfg&quot;,&quot;kek_region_MEMORY_PLACED&quot;)}`">
+    <FittingRules>
+      <MappingRules>
+        <IpBlock name="VirtualResource" />
+        <Resource name="vres\.reserved_memory_region" />
+        <OperatingMode value="MCU" />
+      </MappingRules>
+    </FittingRules>
+    <!-- Removed ExposedMembers section to conform to schema v13 -->
     <Parameters>
       <!-- Adding required Parameters section -->
-      <ParamString id="guid_param" default="F9D3C7A5-8E2B-4F6D-9A4C-7B1E5F8A3D6C" visible="false" editable="false" group="" name="" desc="" />
-      <ParamString id="name_param" default="BOOTLOADER_SRAM_CODE" visible="false" editable="false" group="" name="" desc="" />
-      <ParamString id="size_param" default="0x00001000" visible="false" editable="false" group="" name="" desc="" />
+      <ParamString id="guid_param" default="8A4F5C3E-6D9B-4A1E-5F8C-7A2D9E4B6F3A" visible="false" editable="false" group="" name="" desc="" />
+      <ParamString id="name_param" default="KEK_REGION" visible="false" editable="false" group="" name="" desc="" />
+      <ParamString id="size_param" default="0x400" visible="false" editable="false" group="" name="" desc="" />
       <ParamString id="cores_param" default="CORE_NAME_CM33_0_S" visible="false" editable="false" group="" name="" desc="" />
-      <ParamString id="memory_param" default="SRAM" visible="false" editable="false" group="" name="" desc="" />
-      <ParamString id="capabilities_param" default="Secure,Readable,Writable,Executable" visible="false" editable="false" group="" name="" desc="" />
+      <ParamString id="memory_param" default="RRAM" visible="false" editable="false" group="" name="" desc="" />
+      <ParamString id="capabilities_param" default="Readable" visible="false" editable="false" group="" name="" desc="" />
     </Parameters>
   </PersonalityTemplate>
 
